@@ -446,6 +446,28 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.lyrics_box)
         self.lyrics_box.setVisible(False)
 
+        # 로고 이미지 선택 (영상 우측 상단 오버레이)
+        logo_row = QHBoxLayout()
+        logo_label = QLabel("로고 이미지:")
+        logo_row.addWidget(logo_label)
+
+        self.logo_path_input = QLineEdit()
+        self.logo_path_input.setPlaceholderText("선택 안 함 (우측 상단 투명 로고 PNG/JPG...)")
+        self.logo_path_input.setReadOnly(True)
+        logo_row.addWidget(self.logo_path_input)
+
+        self.logo_select_btn = QPushButton("📁 로고 선택")
+        self.logo_select_btn.clicked.connect(self._select_logo_file)
+        logo_row.addWidget(self.logo_select_btn)
+
+        self.logo_clear_btn = QPushButton("❌")
+        self.logo_clear_btn.setFixedWidth(36)
+        self.logo_clear_btn.setToolTip("로고 선택 해제")
+        self.logo_clear_btn.clicked.connect(self._clear_logo_file)
+        logo_row.addWidget(self.logo_clear_btn)
+
+        left_layout.addLayout(logo_row)
+
         left_layout.addSpacing(15)
 
         # 실행 버튼
@@ -570,6 +592,19 @@ class MainWindow(QMainWindow):
         # 0: 가사 없음 (연주곡), 1: 가사 있음 (보컬 곡)
         self.lyrics_box.setVisible(index == 1)
 
+    def _select_logo_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "영상 우측 상단에 반영할 로고 이미지 선택",
+            "",
+            "이미지 파일 (*.png *.jpg *.jpeg *.webp *.bmp)"
+        )
+        if file_path:
+            self.logo_path_input.setText(file_path)
+
+    def _clear_logo_file(self):
+        self.logo_path_input.clear()
+
     def start_generation(self):
         mood = self.mood_input.toPlainText().strip()
         if not mood:
@@ -596,6 +631,7 @@ class MainWindow(QMainWindow):
         genre = self.genre_combo.currentText()
         is_inst = (self.lyrics_combo.currentIndex() == 0)
         custom_lyrics = self.lyrics_input.toPlainText().strip() if not is_inst else ""
+        logo_path = self.logo_path_input.text().strip()
 
         # 페이드 시간 파싱
         fade_txt = self.fade_combo.currentText()
@@ -607,7 +643,12 @@ class MainWindow(QMainWindow):
         elif "0초" in fade_txt:
             fade_dur = 0.0
 
-        self.worker = AutomationWorker(mood, genre, is_inst, fade_duration=fade_dur, custom_lyrics=custom_lyrics)
+        self.worker = AutomationWorker(
+            mood, genre, is_inst,
+            fade_duration=fade_dur,
+            custom_lyrics=custom_lyrics,
+            logo_path=logo_path
+        )
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.log_signal.connect(self.append_log)
@@ -664,7 +705,9 @@ class MainWindow(QMainWindow):
         elif "0초" in fade_txt:
             fade_dur = 0.0
 
-        self.worker = EncodingWorker(p, fade_duration=fade_dur)
+        logo_path = self.logo_path_input.text().strip()
+
+        self.worker = EncodingWorker(p, fade_duration=fade_dur, logo_path=logo_path)
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.log_signal.connect(self.append_log)

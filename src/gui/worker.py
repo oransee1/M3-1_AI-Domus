@@ -17,13 +17,14 @@ class AutomationWorker(QThread):
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = ""):
+    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = "", logo_path: str = ""):
         super().__init__()
         self.mood = mood
         self.genre = genre
         self.is_instrumental = is_instrumental
         self.fade_duration = fade_duration
         self.custom_lyrics = custom_lyrics
+        self.logo_path = logo_path
 
     def run(self):
         try:
@@ -178,12 +179,24 @@ class AutomationWorker(QThread):
                 if percent % 25 == 0 or percent == 100:
                     self.log_signal.emit(f"  [인코딩] {msg}")
 
+            # 로고 이미지 규격화 및 준비 (지정된 경우 우측 상단 오버레이)
+            prepared_logo = None
+            if self.logo_path and Path(self.logo_path).exists():
+                try:
+                    prepared_logo = work_dir / "logo_prepared.png"
+                    ImageProcessor.prepare_logo(Path(self.logo_path), prepared_logo, max_width=240, max_height=100)
+                    self.log_signal.emit(f"🖼️ [로고 오버레이] 로고 이미지 규격화 완료: {Path(self.logo_path).name} ➜ 영상 우측 상단에 반영됩니다.")
+                except Exception as e:
+                    self.log_signal.emit(f"⚠️ [로고 처리 경고] 로고 로딩 실패 ({e}) - 로고 없이 렌더링을 진행합니다.")
+                    prepared_logo = None
+
             renderer.render_slideshow(
                 image_paths=fhd_frames,
                 audio_path=audio_file,
                 output_mp4=final_mp4,
                 total_duration=actual_audio_duration,
                 fade_duration=self.fade_duration,
+                logo_path=prepared_logo,
                 progress_callback=render_callback
             )
 
@@ -213,10 +226,11 @@ class EncodingWorker(QThread):
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, project_dir: Path, fade_duration: float = 1.5):
+    def __init__(self, project_dir: Path, fade_duration: float = 1.5, logo_path: str = ""):
         super().__init__()
         self.project_dir = Path(project_dir)
         self.fade_duration = fade_duration
+        self.logo_path = logo_path
 
     def run(self):
         try:
@@ -280,12 +294,24 @@ class EncodingWorker(QThread):
                 if percent % 20 == 0 or percent == 100:
                     self.log_signal.emit(f"  [인코딩 진행] {msg}")
 
+            # 로고 이미지 규격화 및 준비 (지정된 경우 우측 상단 오버레이)
+            prepared_logo = None
+            if self.logo_path and Path(self.logo_path).exists():
+                try:
+                    prepared_logo = self.project_dir / "logo_prepared.png"
+                    ImageProcessor.prepare_logo(Path(self.logo_path), prepared_logo, max_width=240, max_height=100)
+                    self.log_signal.emit(f"🖼️ [로고 오버레이] 로고 이미지 규격화 완료: {Path(self.logo_path).name} ➜ 영상 우측 상단에 반영됩니다.")
+                except Exception as e:
+                    self.log_signal.emit(f"⚠️ [로고 처리 경고] 로고 로딩 실패 ({e}) - 로고 없이 렌더링을 진행합니다.")
+                    prepared_logo = None
+
             renderer.render_slideshow(
                 image_paths=fhd_frames,
                 audio_path=audio_file,
                 output_mp4=final_mp4,
                 total_duration=actual_audio_duration,
                 fade_duration=self.fade_duration,
+                logo_path=prepared_logo,
                 progress_callback=render_callback
             )
 
