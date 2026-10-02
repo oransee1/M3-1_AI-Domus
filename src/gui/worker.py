@@ -35,7 +35,7 @@ class AutomationWorker(QThread):
             self.progress_signal.emit(5, "1단계: Gemini AI 기획 에이전트 가동 중...")
 
             # 1. Gemini AI 기획
-            self.log_signal.emit("🧠 Gemini 3.8 Flash가 무드 분석 및 멀티모달 프롬프트 동시 기획을 시작합니다...")
+            self.log_signal.emit("🧠 Gemini AI 기획 에이전트가 무드 분석 및 멀티모달 프롬프트 동시 기획을 시작합니다...")
             gemini_agent = GeminiPromptAgent()
             plan = gemini_agent.plan_prompts(self.mood, self.genre, self.is_instrumental)
 

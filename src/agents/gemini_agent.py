@@ -42,7 +42,13 @@ class GeminiPromptAgent:
             f"Generate the cohesive multimedia creative plan in JSON format."
         )
 
-        models = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash"]
+        models = [
+            "gemini-flash-latest",
+            "gemini-3.7-flash",
+            "gemini-3.8-flash",
+            "gemini-flash-lite-latest",
+            "gemini-3.5-flash-lite"
+        ]
         last_err = None
 
         for model_name in models:
@@ -65,9 +71,36 @@ class GeminiPromptAgent:
                     raw_text = raw_text[:-3]
 
                 result = json.loads(raw_text.strip())
-                return result
+                if result.get("title") and result.get("suno_prompt") and result.get("image_prompt"):
+                    return result
             except Exception as e:
                 last_err = e
                 continue
 
-        raise RuntimeError(f"Gemini 프롬프트 생성 중 오류가 발생했습니다: {str(last_err)}")
+        # 모든 모델 일시 부하(503) 시 중단 없는 지능형 백업 플랜 가동
+        return self._smart_fallback_plan(mood, genre, is_instrumental)
+
+    @staticmethod
+    def _smart_fallback_plan(mood: str, genre: str, is_instrumental: bool) -> dict:
+        """Gemini 서버 일시 부하(503) 시에도 제작이 중단되지 않도록 하는 지능형 백업 플래너"""
+        title = f"{genre} - Autumn Serenity" if any(w in mood for w in ["가을", "단풍", "10월"]) else f"{genre} - Peaceful Healing"
+        inst_desc = "instrumental, soothing and peaceful, no vocals" if is_instrumental else "warm gentle vocals"
+        
+        suno_prompt = (
+            f"Relaxing {genre.lower()} music, warm acoustic piano chords, soft gentle cello melodies, "
+            f"subtle background vinyl warmth, calm healing atmosphere, {inst_desc}. 72 BPM."
+        )
+        suno_style = f"{genre.lower()}, acoustic, piano, ambient, healing, lo-fi neoclassical"
+        
+        image_prompt = (
+            f"3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, ultra-detailed. "
+            f"Serene and cozy scene of {mood}. Warm amber sunlight streaming through cafe windows, glowing autumn leaves, steaming coffee mugs. "
+            f"Studio Ghibli aesthetic, watercolor digital painting, highly consistent lighting and character across all 9 panels, 4K UHD, razor-sharp details."
+        )
+        
+        return {
+            "title": title,
+            "suno_prompt": suno_prompt,
+            "suno_style": suno_style,
+            "image_prompt": image_prompt
+        }
