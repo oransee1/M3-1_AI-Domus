@@ -11,11 +11,52 @@ class GeminiPromptAgent:
             raise ValueError("Gemini API Key가 설정되지 않았습니다. .env 또는 설정창에서 입력해주세요.")
         self.client = genai.Client(api_key=self.api_key)
 
-    def plan_prompts(self, mood: str, genre: str = "New Age", is_instrumental: bool = True, custom_lyrics: str = "") -> dict:
+    # 쿼터 제한 방지를 위한 모든 무료 Gemini 엔진 풀 (가용성/속도 우선 순위)
+    FREE_GEMINI_ENGINES = [
+        # 1. 고속 & 저쿼터 소모 Flash-Lite 계열 (RPM/RPD 여유 높음)
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-flash-lite-latest",
+        "gemini-3.1-flash-lite-preview",
+        "gemini-3-flash-preview",
+        # 2. 고성능 Flash 표준 계열
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.8-flash",
+        "gemini-flash-latest",
+        # 3. 확장 Pro / Omni 계열
+        "gemini-3.1-pro-preview",
+        "gemini-omni-flash-preview",
+        "gemini-omni-1.1-flash",
+        "gemini-pro-latest",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-flash",
+    ]
+
+    def get_all_free_models(self) -> list:
+        """계정에서 활성화된 무료 Gemini 엔진 목록을 동적으로 탐색하여 확장 목록을 구성합니다."""
+        models = list(self.FREE_GEMINI_ENGINES)
+        try:
+            discovered = []
+            for m in self.client.models.list():
+                name = m.name[7:] if m.name.startswith("models/") else m.name
+                lower = name.lower()
+                if "gemini" in lower and not any(ex in lower for ex in ["embedding", "tts", "live", "transcribe", "robotics", "computer-use"]):
+                    discovered.append(name)
+            for dm in discovered:
+                if dm not in models:
+                    models.append(dm)
+        except Exception:
+            pass
+        return models
+
+    def plan_prompts(self, mood: str, genre: str = "New Age", is_instrumental: bool = True, custom_lyrics: str = "", log_callback=None) -> dict:
         """
         사용자의 한국어 입력(분위기, 장르 등)을 분석하여
         Suno 음악 프롬프트와 Nano Banana 3x3 그리드 스토리보드 프롬프트를 동시 기획합니다.
-        가사 유무(is_instrumental) 및 사용자 지정 가사(custom_lyrics)를 완벽 지원합니다.
+        가사 유무(is_instrumental) 및 사용자 지정 가사(custom_lyrics)를 완벽 지원하며,
+        무료 Gemini API의 쿼터 제한을 우회하기 위해 모든 무료 Gemini 엔진을 순차 탐색합니다.
         """
         if is_instrumental:
             suno_prompt_rule = (
@@ -63,17 +104,14 @@ class GeminiPromptAgent:
             f"Generate the cohesive multimedia creative plan in JSON format."
         )
 
-        models = [
-            "gemini-flash-latest",
-            "gemini-3.7-flash",
-            "gemini-3.8-flash",
-            "gemini-flash-lite-latest",
-            "gemini-3.5-flash-lite"
-        ]
+        models = self.get_all_free_models()
         last_err = None
 
         for model_name in models:
             try:
+                if log_callback:
+                    log_callback(f"🤖 [Gemini 엔진 시도] 무료 엔진 '{model_name}'으로 기획을 시작합니다...")
+
                 response = self.client.models.generate_content(
                     model=model_name,
                     contents=user_content,
@@ -93,12 +131,29 @@ class GeminiPromptAgent:
 
                 result = json.loads(raw_text.strip())
                 if result.get("title") and result.get("suno_prompt") and result.get("image_prompt"):
+                    result["engine"] = model_name
+                    if log_callback:
+                        log_callback(f"✅ [Gemini 엔진 가동 성공] 무료 엔진 '{model_name}'으로 기획 완료!")
                     return result
             except Exception as e:
                 last_err = e
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    reason = "무료 쿼터 소진(429)"
+                elif "503" in err_str or "UNAVAILABLE" in err_str:
+                    reason = "서버 일시 부하(503)"
+                elif "404" in err_str or "NOT_FOUND" in err_str:
+                    reason = "미지원(404)"
+                else:
+                    reason = "응답 오류"
+                
+                if log_callback:
+                    log_callback(f"⚠️ [{model_name} {reason}] 다음 무료 Gemini 엔진으로 즉시 자동 전환합니다...")
                 continue
 
-        # 모든 모델 일시 부하(503) 시 중단 없는 지능형 백업 플랜 가동
+        # 모든 모델 일시 부하/쿼터 소진 시 중단 없는 지능형 백업 플랜 가동
+        if log_callback:
+            log_callback("🛡️ 모든 원격 모델 제한 도달 시 중단 방지 지능형 백업 플랜으로 즉시 완성합니다.")
         return self._smart_fallback_plan(mood, genre, is_instrumental, custom_lyrics)
 
     @staticmethod

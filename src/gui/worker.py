@@ -42,7 +42,13 @@ class AutomationWorker(QThread):
                 self.log_signal.emit("🎤 [음악 모드] 보컬 곡 (가사 포함 - Vocal Song with Lyrics)")
             self.log_signal.emit("🧠 Gemini AI 기획 에이전트가 무드 분석 및 멀티모달 프롬프트 동시 기획을 시작합니다...")
             gemini_agent = GeminiPromptAgent()
-            plan = gemini_agent.plan_prompts(self.mood, self.genre, self.is_instrumental, self.custom_lyrics)
+            plan = gemini_agent.plan_prompts(
+                self.mood,
+                self.genre,
+                self.is_instrumental,
+                self.custom_lyrics,
+                log_callback=self.log_signal.emit
+            )
 
             raw_title = plan.get("title", f"Healing_{timestamp}")
             # 윈도우 금지 특수문자(: * ? " < > | / \) 정제하여 NTFS 대체 스트림 오류 완벽 차단
@@ -53,8 +59,9 @@ class AutomationWorker(QThread):
             suno_prompt = plan.get("suno_prompt", "")
             suno_style = plan.get("suno_style", self.genre)
             image_prompt = plan.get("image_prompt", "")
+            used_engine = plan.get("engine", "지능형 백업 엔진")
 
-            self.log_signal.emit(f"✨ [AI 기획 완료] 곡명: {title}")
+            self.log_signal.emit(f"✨ [AI 기획 완료] 곡명: {title} (기획 엔진: {used_engine})")
             if self.is_instrumental:
                 self.log_signal.emit(f"🎵 Suno 음악 프롬프트: {suno_prompt}")
             else:
