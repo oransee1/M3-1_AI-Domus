@@ -10,6 +10,7 @@ from src.media.video_renderer import VideoRenderer
 
 class AutomationWorker(QThread):
     progress_signal = pyqtSignal(int, str)
+    step_signal = pyqtSignal(int)
     log_signal = pyqtSignal(str)
     scenes_ready_signal = pyqtSignal(list)
     finished_signal = pyqtSignal(str, str, list)
@@ -29,6 +30,7 @@ class AutomationWorker(QThread):
             work_dir.mkdir(parents=True, exist_ok=True)
 
             self.log_signal.emit(f"🚀 [작업 시작] 프로젝트 세션 생성: {work_dir.name}")
+            self.step_signal.emit(1)
             self.progress_signal.emit(5, "1단계: Gemini AI 기획 에이전트 가동 중...")
 
             # 1. Gemini AI 기획
@@ -44,6 +46,8 @@ class AutomationWorker(QThread):
             self.log_signal.emit(f"✨ [AI 기획 완료] 곡명: {title}")
             self.log_signal.emit(f"🎵 Suno 음악 프롬프트: {suno_prompt}")
             self.log_signal.emit(f"🎨 Nano Banana 3x3 이미지 프롬프트: {image_prompt[:90]}...")
+            
+            self.step_signal.emit(2)
             self.progress_signal.emit(20, "2단계: Apiframe 미디어 생성 발주 중...")
 
             # 2. Apiframe 작업 발주
@@ -56,6 +60,7 @@ class AutomationWorker(QThread):
             image_job_id = client.create_image_task(image_prompt)
             self.log_signal.emit(f"✅ Nano Banana Job ID 발급 완료: {image_job_id}")
 
+            self.step_signal.emit(3)
             self.progress_signal.emit(35, "3단계: AI 오디오 및 비주얼 에셋 생성 대기 중...")
 
             # 3. 폴링 및 완료 대기
@@ -115,6 +120,7 @@ class AutomationWorker(QThread):
             client.download_asset(image_url, raw_image_file)
 
             # 4. 이미지 9분할 크롭 (StoryBoard-Division 정밀 분할)
+            self.step_signal.emit(4)
             self.log_signal.emit("✂️ StoryBoard-Division 정밀 분할 엔진: 3x3 스토리보드를 9장의 씬 이미지로 자동 슬라이싱합니다...")
             scenes_dir = work_dir / "scenes"
             sliced_paths = ImageProcessor.split_3x3_grid(raw_image_file, scenes_dir)
@@ -129,6 +135,7 @@ class AutomationWorker(QThread):
             fhd_frames = ImageProcessor.prepare_16_9_frames(sliced_paths, frames_dir)
             self.log_signal.emit("✅ 1080p 유튜브 와이드 프레임(배경 블러 확장) 구성 완료")
 
+            self.step_signal.emit(5)
             self.progress_signal.emit(75, "5단계: MoveEditor 영상 합성 및 페이드 인/아웃 인코딩 중...")
 
             # 5. FFmpeg 영상 렌더링 (MoveEditor 페이드 인/페이드 아웃 크로스페이드)
@@ -152,6 +159,7 @@ class AutomationWorker(QThread):
                 progress_callback=render_callback
             )
 
+            self.step_signal.emit(6)
             self.progress_signal.emit(100, "🎉 모든 제작 공정이 성공적으로 완료되었습니다!")
             self.log_signal.emit(f"🏆 [완료] 최종 1080p 영상 생성 성공:\n  {final_mp4}")
             self.finished_signal.emit(str(final_mp4), str(audio_file), [str(p) for p in sliced_paths])

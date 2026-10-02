@@ -1,11 +1,12 @@
 import os
 import sys
+import time
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QTextEdit, QComboBox, QCheckBox, QPushButton,
     QProgressBar, QGroupBox, QMessageBox, QDialog, QFormLayout, QGridLayout,
-    QTabWidget
+    QSplitter, QScrollArea
 )
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtGui import QFont, QDesktopServices, QPixmap
@@ -21,6 +22,34 @@ QWidget {
     color: #cdd6f4;
     font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
     font-size: 13px;
+}
+QSplitter::handle {
+    background-color: #313244;
+    height: 3px;
+}
+QLabel.StepBadge {
+    background-color: #313244;
+    color: #a6adc8;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: bold;
+}
+QLabel.StepBadgeActive {
+    background-color: #89b4fa;
+    color: #11111b;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: bold;
+}
+QLabel.StepBadgeDone {
+    background-color: #a6e3a1;
+    color: #11111b;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: bold;
 }
 QGroupBox {
     border: 1px solid #45475a;
@@ -160,15 +189,24 @@ class SettingsDialog(QDialog):
         self.accept()
 
 class MainWindow(QMainWindow):
+    STEP_NAMES = [
+        "1. AI 기획",
+        "2. 생성 발주",
+        "3. 에셋 수집",
+        "4. 3x3 분할",
+        "5. 영상 렌더링"
+    ]
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AI Domus Music Studio - AI 기반 음악 및 영상 제작 자동화")
-        self.resize(1150, 780)
+        self.resize(1200, 820)
         self.setStyleSheet(MODERN_STYLE)
 
         self.worker = None
         self.last_mp4 = None
         self.scene_labels = []
+        self.step_badges = []
 
         self.init_ui()
 
@@ -262,48 +300,83 @@ class MainWindow(QMainWindow):
         left_layout.addStretch()
         body_layout.addWidget(left_box, 40)
 
-        # 우측 패널: 실시간 모니터링 & 3x3 스토리보드 분할 씬 프리뷰
-        right_box = QGroupBox("2. 자동화 파이프라인 모니터링 & 스토리보드")
+        # 우측 패널: 실시간 모니터링 & 스토리보드
+        right_box = QGroupBox("2. 처음부터 끝까지 실시간 진행 모니터링 & 스토리보드")
         right_layout = QVBoxLayout(right_box)
 
+        # 5단계 파이프라인 단계별 진행 바 (Step Indicator)
+        step_bar = QHBoxLayout()
+        step_bar.setSpacing(6)
+        self.step_badges = []
+        for i, name in enumerate(self.STEP_NAMES):
+            badge = QLabel(name)
+            badge.setProperty("class", "StepBadge")
+            badge.setAlignment(Qt.AlignCenter)
+            self.step_badges.append(badge)
+            step_bar.addWidget(badge)
+            if i < len(self.STEP_NAMES) - 1:
+                arrow = QLabel("➔")
+                arrow.setStyleSheet("color: #6c7086; font-size: 13px; font-weight: bold;")
+                arrow.setAlignment(Qt.AlignCenter)
+                step_bar.addWidget(arrow)
+        right_layout.addLayout(step_bar)
+
         self.status_label = QLabel("대기 중... [생성 시작]을 클릭하세요.")
-        self.status_label.setStyleSheet("font-weight: bold; color: #a6e3a1;")
+        self.status_label.setStyleSheet("font-weight: bold; color: #a6e3a1; font-size: 13px;")
         right_layout.addWidget(self.status_label)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
         right_layout.addWidget(self.progress_bar)
 
-        # 탭 위젯: 실시간 로그 vs StoryBoard-Division 3x3 분할 씬 뷰
-        self.tabs = QTabWidget()
+        # 상하 스플리터: 상단 실시간 로그 콘솔(상시 노출) / 하단 3x3 스토리보드 씬
+        splitter = QSplitter(Qt.Vertical)
 
-        # 탭 1: 콘솔 로그
-        console_widget = QWidget()
-        console_layout = QVBoxLayout(console_widget)
-        console_layout.setContentsMargins(4, 4, 4, 4)
+        # 1. 상단: 대형 실시간 로그 콘솔 창
+        log_panel = QWidget()
+        log_layout = QVBoxLayout(log_panel)
+        log_layout.setContentsMargins(0, 4, 0, 4)
+        log_title = QLabel("📋 실시간 처리 로그 콘솔 (처음부터 끝까지 전체 진행 상황 실시간 스트리밍):")
+        log_title.setStyleSheet("font-weight: bold; color: #89b4fa; font-size: 12px;")
+        log_layout.addWidget(log_title)
+
         self.log_console = QTextEdit()
         self.log_console.setReadOnly(True)
-        self.log_console.setStyleSheet("background-color: #11111b; font-family: 'Consolas', monospace; font-size: 11px;")
-        console_layout.addWidget(self.log_console)
-        self.tabs.addTab(console_widget, "🖥️ 실시간 로그 콘솔")
+        self.log_console.setStyleSheet(
+            "background-color: #11111b; color: #cdd6f4; "
+            "font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; "
+            "border: 1px solid #45475a; border-radius: 6px; padding: 6px;"
+        )
+        log_layout.addWidget(self.log_console)
+        splitter.addWidget(log_panel)
 
-        # 탭 2: StoryBoard-Division 3x3 그리드 분할 씬 뷰
-        scenes_widget = QWidget()
-        scenes_grid = QGridLayout(scenes_widget)
-        scenes_grid.setSpacing(8)
-        scenes_grid.setContentsMargins(6, 6, 6, 6)
+        # 2. 하단: StoryBoard-Division 3x3 분할 씬 프리뷰 창
+        scenes_panel = QWidget()
+        scenes_layout = QVBoxLayout(scenes_panel)
+        scenes_layout.setContentsMargins(0, 4, 0, 4)
+        scenes_title = QLabel("🖼️ 3x3 스토리보드 정밀 분할 씬 (StoryBoard-Division):")
+        scenes_title.setStyleSheet("font-weight: bold; color: #f9e2af; font-size: 12px;")
+        scenes_layout.addWidget(scenes_title)
+
+        scenes_grid = QGridLayout()
+        scenes_grid.setSpacing(6)
+        scenes_grid.setContentsMargins(0, 0, 0, 0)
         self.scene_labels = []
         for i in range(9):
             lbl = QLabel(f"Scene {i+1}\n(대기 중)")
             lbl.setObjectName("SceneCell")
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setMinimumSize(110, 110)
+            lbl.setMinimumSize(85, 85)
             row, col = divmod(i, 3)
             scenes_grid.addWidget(lbl, row, col)
             self.scene_labels.append(lbl)
-        self.tabs.addTab(scenes_widget, "🖼️ 3x3 스토리보드 분할 씬 (StoryBoard-Division)")
+        scenes_layout.addLayout(scenes_grid)
+        splitter.addWidget(scenes_panel)
 
-        right_layout.addWidget(self.tabs)
+        # 스플리터 비율 설정: 로그 창 55%, 3x3 분할 씬 45%
+        splitter.setStretchFactor(0, 55)
+        splitter.setStretchFactor(1, 45)
+        right_layout.addWidget(splitter)
 
         # 결과 버튼 행
         action_row = QHBoxLayout()
@@ -341,6 +414,7 @@ class MainWindow(QMainWindow):
         self.play_video_btn.setEnabled(False)
         self.log_console.clear()
         self.progress_bar.setValue(0)
+        self.update_step(0)  # 5단계 뱃지 초기화
 
         # 3x3 씬 라벨 초기화
         for i, lbl in enumerate(self.scene_labels):
@@ -361,12 +435,32 @@ class MainWindow(QMainWindow):
             fade_dur = 0.0
 
         self.worker = AutomationWorker(mood, genre, is_inst, fade_duration=fade_dur)
+        self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.log_signal.connect(self.append_log)
         self.worker.scenes_ready_signal.connect(self.display_scenes)
         self.worker.finished_signal.connect(self.on_finished)
         self.worker.error_signal.connect(self.on_error)
         self.worker.start()
+
+    def update_step(self, step_num: int):
+        """처음부터 끝까지 5단계 진행 상태 뱃지를 실시간으로 하이라이트/체크 갱신"""
+        for i, badge in enumerate(self.step_badges):
+            idx = i + 1
+            if step_num == 6:  # 전체 완료
+                badge.setText(f"✓ {self.STEP_NAMES[i]}")
+                badge.setProperty("class", "StepBadgeDone")
+            elif idx < step_num:
+                badge.setText(f"✓ {self.STEP_NAMES[i]}")
+                badge.setProperty("class", "StepBadgeDone")
+            elif idx == step_num:
+                badge.setText(f"⏳ {self.STEP_NAMES[i]}")
+                badge.setProperty("class", "StepBadgeActive")
+            else:
+                badge.setText(self.STEP_NAMES[i])
+                badge.setProperty("class", "StepBadge")
+            badge.style().unpolish(badge)
+            badge.style().polish(badge)
 
     def display_scenes(self, thumb_paths: list):
         """StoryBoard-Division 기반: 9개 분할 씬 썸네일을 3x3 그리드에 시각화"""
@@ -384,16 +478,15 @@ class MainWindow(QMainWindow):
                         self.scene_labels[idx].setPixmap(scaled)
                 except Exception:
                     pass
-        # 자동으로 3x3 분할 씬 탭으로 포커스 이동하여 시각적 확인
-        self.tabs.setCurrentIndex(1)
 
     def update_progress(self, percent: int, msg: str):
         self.progress_bar.setValue(percent)
         self.status_label.setText(msg)
 
     def append_log(self, text: str):
-        self.log_console.append(text)
-        # 자동 스크롤
+        """실시간 콘솔 로그에 타임스탬프를 부여하고 자동 스크롤 유지"""
+        timestamp_str = time.strftime("[%H:%M:%S] ")
+        self.log_console.append(f"{timestamp_str}{text}")
         self.log_console.verticalScrollBar().setValue(
             self.log_console.verticalScrollBar().maximum()
         )
