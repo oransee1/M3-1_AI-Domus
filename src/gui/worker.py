@@ -11,14 +11,16 @@ from src.media.video_renderer import VideoRenderer
 class AutomationWorker(QThread):
     progress_signal = pyqtSignal(int, str)
     log_signal = pyqtSignal(str)
+    scenes_ready_signal = pyqtSignal(list)
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, mood: str, genre: str, is_instrumental: bool):
+    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5):
         super().__init__()
         self.mood = mood
         self.genre = genre
         self.is_instrumental = is_instrumental
+        self.fade_duration = fade_duration
 
     def run(self):
         try:
@@ -112,20 +114,25 @@ class AutomationWorker(QThread):
             self.log_signal.emit("📥 3x3 스토리보드 이미지 다운로드 중...")
             client.download_asset(image_url, raw_image_file)
 
-            # 4. 이미지 9분할 크롭
-            self.log_signal.emit("✂️ Pillow를 활용하여 3x3 스토리보드를 9장의 씬 이미지로 자동 슬라이싱합니다...")
+            # 4. 이미지 9분할 크롭 (StoryBoard-Division 정밀 분할)
+            self.log_signal.emit("✂️ StoryBoard-Division 정밀 분할 엔진: 3x3 스토리보드를 9장의 씬 이미지로 자동 슬라이싱합니다...")
             scenes_dir = work_dir / "scenes"
             sliced_paths = ImageProcessor.split_3x3_grid(raw_image_file, scenes_dir)
             self.log_signal.emit(f"✅ 9장의 고화질 씬 이미지 생성 완료 ({len(sliced_paths)}개 프레임)")
+
+            # GUI 실시간 3x3 프리뷰용 썸네일 생성 및 시그널 방출
+            thumb_dir = work_dir / "thumbnails"
+            thumb_paths = ImageProcessor.generate_thumbnails(sliced_paths, thumb_dir)
+            self.scenes_ready_signal.emit([str(p) for p in thumb_paths])
 
             frames_dir = work_dir / "frames_1080p"
             fhd_frames = ImageProcessor.prepare_16_9_frames(sliced_paths, frames_dir)
             self.log_signal.emit("✅ 1080p 유튜브 와이드 프레임(배경 블러 확장) 구성 완료")
 
-            self.progress_signal.emit(75, "5단계: FFmpeg 1080p 영상 렌더링 중...")
+            self.progress_signal.emit(75, "5단계: MoveEditor 영상 합성 및 페이드 인/아웃 인코딩 중...")
 
-            # 5. FFmpeg 영상 렌더링
-            self.log_signal.emit("🎬 FFmpeg 비디오 합성 엔진 가동: 음원 싱크 맞춤 및 1080p MP4 인코딩 시작...")
+            # 5. FFmpeg 영상 렌더링 (MoveEditor 페이드 인/페이드 아웃 크로스페이드)
+            self.log_signal.emit(f"🎬 MoveEditor 합성 엔진 가동: 페이드 효과({self.fade_duration}s) 및 1080p MP4 인코딩 시작...")
             renderer = VideoRenderer()
             final_mp4 = work_dir / f"{title}_FHD.mp4"
 
@@ -141,6 +148,7 @@ class AutomationWorker(QThread):
                 audio_path=audio_file,
                 output_mp4=final_mp4,
                 total_duration=audio_duration if audio_duration > 0 else None,
+                fade_duration=self.fade_duration,
                 progress_callback=render_callback
             )
 

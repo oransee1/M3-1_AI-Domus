@@ -73,3 +73,57 @@ class ImageProcessor:
             fhd_paths.append(out_path)
 
         return fhd_paths
+
+    @staticmethod
+    def create_thumbnail(img: Image.Image, max_size: tuple = (320, 320)) -> Image.Image:
+        """
+        StoryBoard-Division 기반: 원본 비율을 보존하며 고품질 썸네일을 생성합니다.
+        """
+        img_copy = img.copy()
+        img_copy.thumbnail(max_size, Image.Resampling.LANCZOS)
+        return img_copy
+
+    @staticmethod
+    def generate_thumbnails(scene_paths: List[Path], thumb_dir: Path, size: tuple = (240, 240)) -> List[Path]:
+        """
+        GUI 프리뷰용 9개 씬 썸네일 이미지를 일괄 생성하여 저장합니다.
+        """
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        thumb_paths = []
+        for sp in scene_paths:
+            img = Image.open(sp).convert("RGB")
+            thumb = ImageProcessor.create_thumbnail(img, size)
+            t_path = thumb_dir / f"thumb_{sp.name}"
+            thumb.save(t_path, "PNG")
+            thumb_paths.append(t_path)
+        return thumb_paths
+
+    @staticmethod
+    def pil_to_pixmap(pil_img: Image.Image):
+        """
+        StoryBoard-Division 기반:
+        PIL Image를 PyQt5 QPixmap으로 변환할 때 Qt SIMD 컬러 변환 시
+        발생할 수 있는 메모리 접근 위반(0xC0000005)을 원천 차단하는 안전 변환기.
+        """
+        try:
+            from PyQt5.QtGui import QPixmap, QImage
+            if pil_img is None or pil_img.width <= 0 or pil_img.height <= 0:
+                return QPixmap()
+
+            if pil_img.mode != "RGBA":
+                converted = pil_img.convert("RGBA")
+            else:
+                converted = pil_img
+
+            data = converted.tobytes("raw", "BGRA")
+            qimg = QImage(
+                data,
+                converted.width,
+                converted.height,
+                converted.width * 4,
+                QImage.Format_ARGB32,
+            ).copy()
+            return QPixmap.fromImage(qimg)
+        except Exception:
+            return None
+

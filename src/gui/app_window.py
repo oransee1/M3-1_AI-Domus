@@ -4,12 +4,15 @@ from pathlib import Path
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QTextEdit, QComboBox, QCheckBox, QPushButton,
-    QProgressBar, QGroupBox, QMessageBox, QDialog, QFormLayout
+    QProgressBar, QGroupBox, QMessageBox, QDialog, QFormLayout, QGridLayout,
+    QTabWidget
 )
 from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtGui import QFont, QDesktopServices
+from PyQt5.QtGui import QFont, QDesktopServices, QPixmap
+from PIL import Image
 
 from src.config import Config, OUTPUT_DIR
+from src.media.image_processor import ImageProcessor
 from src.gui.worker import AutomationWorker
 
 MODERN_STYLE = """
@@ -92,6 +95,31 @@ QCheckBox::indicator {
     width: 18px;
     height: 18px;
 }
+QLabel#SceneCell {
+    background-color: #181825;
+    border: 1px dashed #45475a;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #6c7086;
+}
+QTabWidget::pane {
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    background-color: #1e1e2e;
+}
+QTabBar::tab {
+    background-color: #313244;
+    color: #cdd6f4;
+    padding: 6px 14px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    margin-right: 3px;
+}
+QTabBar::tab:selected {
+    background-color: #45475a;
+    color: #89b4fa;
+    font-weight: bold;
+}
 """
 
 class SettingsDialog(QDialog):
@@ -135,11 +163,12 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AI Domus Music Studio - AI 기반 음악 및 영상 제작 자동화")
-        self.resize(1000, 720)
+        self.resize(1150, 780)
         self.setStyleSheet(MODERN_STYLE)
 
         self.worker = None
         self.last_mp4 = None
+        self.scene_labels = []
 
         self.init_ui()
 
@@ -204,6 +233,19 @@ class MainWindow(QMainWindow):
         genre_row.addWidget(self.genre_combo)
         left_layout.addLayout(genre_row)
 
+        # 씬 전환 페이드 효과 (MoveEditor-AutoProgram 연동)
+        fade_row = QHBoxLayout()
+        fade_row.addWidget(QLabel("씬 전환 페이드:"))
+        self.fade_combo = QComboBox()
+        self.fade_combo.addItems([
+            "1.5초 (부드러운 크로스페이드 - 기본)",
+            "2.0초 (감성적 롱 크로스페이드)",
+            "1.0초 (빠른 크로스페이드)",
+            "0초 (즉시 컷 전환)"
+        ])
+        fade_row.addWidget(self.fade_combo)
+        left_layout.addLayout(fade_row)
+
         # 가사 유무
         self.inst_check = QCheckBox("보컬 없는 연주곡 (Instrumental BGM)")
         self.inst_check.setChecked(True)
@@ -218,10 +260,10 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.gen_btn)
 
         left_layout.addStretch()
-        body_layout.addWidget(left_box, 45)
+        body_layout.addWidget(left_box, 40)
 
-        # 우측 패널: 실시간 상태 및 로그
-        right_box = QGroupBox("2. 자동화 파이프라인 모니터링")
+        # 우측 패널: 실시간 모니터링 & 3x3 스토리보드 분할 씬 프리뷰
+        right_box = QGroupBox("2. 자동화 파이프라인 모니터링 & 스토리보드")
         right_layout = QVBoxLayout(right_box)
 
         self.status_label = QLabel("대기 중... [생성 시작]을 클릭하세요.")
@@ -232,11 +274,36 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
         right_layout.addWidget(self.progress_bar)
 
-        right_layout.addWidget(QLabel("실시간 처리 콘솔 로그:"))
+        # 탭 위젯: 실시간 로그 vs StoryBoard-Division 3x3 분할 씬 뷰
+        self.tabs = QTabWidget()
+
+        # 탭 1: 콘솔 로그
+        console_widget = QWidget()
+        console_layout = QVBoxLayout(console_widget)
+        console_layout.setContentsMargins(4, 4, 4, 4)
         self.log_console = QTextEdit()
         self.log_console.setReadOnly(True)
         self.log_console.setStyleSheet("background-color: #11111b; font-family: 'Consolas', monospace; font-size: 11px;")
-        right_layout.addWidget(self.log_console)
+        console_layout.addWidget(self.log_console)
+        self.tabs.addTab(console_widget, "🖥️ 실시간 로그 콘솔")
+
+        # 탭 2: StoryBoard-Division 3x3 그리드 분할 씬 뷰
+        scenes_widget = QWidget()
+        scenes_grid = QGridLayout(scenes_widget)
+        scenes_grid.setSpacing(8)
+        scenes_grid.setContentsMargins(6, 6, 6, 6)
+        self.scene_labels = []
+        for i in range(9):
+            lbl = QLabel(f"Scene {i+1}\n(대기 중)")
+            lbl.setObjectName("SceneCell")
+            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setMinimumSize(110, 110)
+            row, col = divmod(i, 3)
+            scenes_grid.addWidget(lbl, row, col)
+            self.scene_labels.append(lbl)
+        self.tabs.addTab(scenes_widget, "🖼️ 3x3 스토리보드 분할 씬 (StoryBoard-Division)")
+
+        right_layout.addWidget(self.tabs)
 
         # 결과 버튼 행
         action_row = QHBoxLayout()
@@ -252,7 +319,7 @@ class MainWindow(QMainWindow):
         action_row.addWidget(self.play_video_btn)
         right_layout.addLayout(action_row)
 
-        body_layout.addWidget(right_box, 55)
+        body_layout.addWidget(right_box, 60)
         main_layout.addLayout(body_layout)
 
     def open_settings(self):
@@ -275,15 +342,50 @@ class MainWindow(QMainWindow):
         self.log_console.clear()
         self.progress_bar.setValue(0)
 
+        # 3x3 씬 라벨 초기화
+        for i, lbl in enumerate(self.scene_labels):
+            lbl.setPixmap(QPixmap())
+            lbl.setText(f"Scene {i+1}\n(생성 중...)")
+
         genre = self.genre_combo.currentText()
         is_inst = self.inst_check.isChecked()
 
-        self.worker = AutomationWorker(mood, genre, is_inst)
+        # 페이드 시간 파싱
+        fade_txt = self.fade_combo.currentText()
+        fade_dur = 1.5
+        if "2.0" in fade_txt:
+            fade_dur = 2.0
+        elif "1.0" in fade_txt:
+            fade_dur = 1.0
+        elif "0초" in fade_txt:
+            fade_dur = 0.0
+
+        self.worker = AutomationWorker(mood, genre, is_inst, fade_duration=fade_dur)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.log_signal.connect(self.append_log)
+        self.worker.scenes_ready_signal.connect(self.display_scenes)
         self.worker.finished_signal.connect(self.on_finished)
         self.worker.error_signal.connect(self.on_error)
         self.worker.start()
+
+    def display_scenes(self, thumb_paths: list):
+        """StoryBoard-Division 기반: 9개 분할 씬 썸네일을 3x3 그리드에 시각화"""
+        for idx, tp in enumerate(thumb_paths[:9]):
+            if idx < len(self.scene_labels):
+                try:
+                    img = Image.open(tp)
+                    pixmap = ImageProcessor.pil_to_pixmap(img)
+                    if pixmap and not pixmap.isNull():
+                        scaled = pixmap.scaled(
+                            self.scene_labels[idx].size(),
+                            Qt.KeepAspectRatio,
+                            Qt.SmoothTransformation
+                        )
+                        self.scene_labels[idx].setPixmap(scaled)
+                except Exception:
+                    pass
+        # 자동으로 3x3 분할 씬 탭으로 포커스 이동하여 시각적 확인
+        self.tabs.setCurrentIndex(1)
 
     def update_progress(self, percent: int, msg: str):
         self.progress_bar.setValue(percent)

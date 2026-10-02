@@ -1,0 +1,11 @@
+  
+
+  1) 3x3 이미지 분할 : C:\Users\DiCiA\PycharmProjects\StoryBoard-Division
+
+  2) 이미지 합성 및 효과(페이드 인/ 페이드 아웃) : C:\Users\DiCiA\PycharmProjects\MoveEditor-AutoProgram
+
+  해당 기능을 종합적으로 추가해서 완성해줘.
+  현재 프로그램은 완성도가 매우 높으므로 전체 코드는 락을 걸어서 수정이 필요한 코드블록만 100% 완벽하게 수정해서 완성해줘.
+
+//===========================================
+
