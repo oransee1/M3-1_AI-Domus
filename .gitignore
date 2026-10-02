@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Output files
+output/
+*.mp4
+*.mp3
+*.png
+*.jpg
+*.jpeg
+
+# PyInstaller build files
+build/
+dist/
+*.spec
+
+# IDE files
+.idea/
+.vscode/

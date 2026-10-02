@@ -1,0 +1,324 @@
+import os
+import sys
+from pathlib import Path
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QLineEdit, QTextEdit, QComboBox, QCheckBox, QPushButton,
+    QProgressBar, QGroupBox, QMessageBox, QDialog, QFormLayout
+)
+from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtGui import QFont, QDesktopServices
+
+from src.config import Config, OUTPUT_DIR
+from src.gui.worker import AutomationWorker
+
+MODERN_STYLE = """
+QWidget {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    font-size: 13px;
+}
+QGroupBox {
+    border: 1px solid #45475a;
+    border-radius: 8px;
+    margin-top: 15px;
+    padding-top: 15px;
+    font-weight: bold;
+    color: #89b4fa;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 5px;
+}
+QLineEdit, QTextEdit, QComboBox {
+    background-color: #313244;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 8px;
+    color: #cdd6f4;
+}
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+    border: 1px solid #89b4fa;
+}
+QPushButton {
+    background-color: #45475a;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: bold;
+    color: #cdd6f4;
+}
+QPushButton:hover {
+    background-color: #585b70;
+}
+QPushButton#GenerateBtn {
+    background-color: #89b4fa;
+    color: #11111b;
+    font-size: 15px;
+    padding: 12px;
+}
+QPushButton#GenerateBtn:hover {
+    background-color: #b4befe;
+}
+QPushButton#PresetBtn {
+    background-color: #313244;
+    border: 1px solid #45475a;
+    font-size: 11px;
+    padding: 5px 8px;
+}
+QPushButton#PresetBtn:hover {
+    background-color: #585b70;
+    border-color: #89b4fa;
+}
+QProgressBar {
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    text-align: center;
+    background-color: #313244;
+    color: #ffffff;
+    font-weight: bold;
+    height: 22px;
+}
+QProgressBar::chunk {
+    background-color: #a6e3a1;
+    border-radius: 5px;
+}
+QCheckBox {
+    spacing: 8px;
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+}
+"""
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("API 키 환경 설정")
+        self.resize(520, 220)
+        self.setStyleSheet(MODERN_STYLE)
+
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+
+        self.gemini_input = QLineEdit(Config.get_gemini_key())
+        self.suno_input = QLineEdit(Config.get_suno_key())
+        self.nano_input = QLineEdit(Config.get_nano_key())
+
+        form.addRow("Gemini API Key:", self.gemini_input)
+        form.addRow("Apiframe Suno Key:", self.suno_input)
+        form.addRow("Apiframe Nano Banana Key:", self.nano_input)
+        layout.addLayout(form)
+
+        btn_box = QHBoxLayout()
+        save_btn = QPushButton("저장")
+        save_btn.clicked.connect(self.save)
+        cancel_btn = QPushButton("취소")
+        cancel_btn.clicked.connect(self.reject)
+        btn_box.addWidget(save_btn)
+        btn_box.addWidget(cancel_btn)
+        layout.addLayout(btn_box)
+
+    def save(self):
+        Config.set_keys(
+            self.gemini_input.text().strip(),
+            self.suno_input.text().strip(),
+            self.nano_input.text().strip()
+        )
+        QMessageBox.information(self, "완료", "API 키가 저장되었습니다.")
+        self.accept()
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("AI Domus Music Studio - AI 기반 음악 및 영상 제작 자동화")
+        self.resize(1000, 720)
+        self.setStyleSheet(MODERN_STYLE)
+
+        self.worker = None
+        self.last_mp4 = None
+
+        self.init_ui()
+
+    def init_ui(self):
+        central = QWidget()
+        self.setCentralWidget(central)
+        main_layout = QVBoxLayout(central)
+
+        # 1. 헤더 영역
+        header = QHBoxLayout()
+        title_box = QVBoxLayout()
+        main_title = QLabel("🎵 AI Domus Music Studio")
+        main_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #cdd6f4;")
+        sub_title = QLabel("Gemini 프롬프트 기획 ➜ Suno & Nano Banana 멀티모달 생성 ➜ 3x3 9분할 ➜ 1080p MP4 원클릭 자동 렌더링")
+        sub_title.setStyleSheet("font-size: 12px; color: #a6adc8;")
+        title_box.addWidget(main_title)
+        title_box.addWidget(sub_title)
+        header.addLayout(title_box)
+        header.addStretch()
+
+        settings_btn = QPushButton("⚙️ API 키 설정")
+        settings_btn.clicked.connect(self.open_settings)
+        header.addWidget(settings_btn)
+        main_layout.addLayout(header)
+
+        # 2. 바디 영역 (좌측: 입력 / 우측: 로그 & 상태)
+        body_layout = QHBoxLayout()
+
+        # 좌측 패널: 사용자 입력
+        left_box = QGroupBox("1. 음악 및 비주얼 테마 기획")
+        left_layout = QVBoxLayout(left_box)
+
+        left_layout.addWidget(QLabel("어떤 음악과 영상을 만들고 싶으신가요? (한국어로 자유롭게 입력)"))
+        self.mood_input = QTextEdit()
+        self.mood_input.setPlaceholderText("예시: 천사와 춤을, 몽환적이고 따뜻한 뉴에이지 피아노, 마음이 편안해지는 힐링 감성")
+        self.mood_input.setFixedHeight(90)
+        left_layout.addWidget(self.mood_input)
+
+        # 빠른 프리셋
+        preset_label = QLabel("⚡ 빠른 무드 프리셋:")
+        preset_label.setStyleSheet("font-size: 11px; color: #bac2de;")
+        left_layout.addWidget(preset_label)
+        preset_layout = QHBoxLayout()
+        presets = [
+            ("👼 천사와 춤을", "천사와 춤을, 몽환적이고 따뜻한 뉴에이지 피아노 선율, 마음의 안식을 주는 힐링 무드"),
+            ("🌧️ 비오는 날 카페", "비 오는 날 아늑한 카페 창가, 따뜻한 커피 향기와 빗소리에 어울리는 차분한 재즈 피아노"),
+            ("🌌 깊은 밤 수면", "새벽 2시 깊은 수면을 유도하는 신비롭고 고요한 앰비언트 사운드와 따뜻한 별빛"),
+            ("☕ 로파이 스터디", "집중하기 좋은 따뜻한 로파이 비트, 부드러운 일렉트릭 피아노와 빈티지 바이닐 질감")
+        ]
+        for name, text in presets:
+            btn = QPushButton(name)
+            btn.setObjectName("PresetBtn")
+            btn.clicked.connect(lambda checked, t=text: self.mood_input.setText(t))
+            preset_layout.addWidget(btn)
+        left_layout.addLayout(preset_layout)
+
+        # 장르 선택
+        genre_row = QHBoxLayout()
+        genre_row.addWidget(QLabel("음악 장르:"))
+        self.genre_combo = QComboBox()
+        self.genre_combo.addItems(["New Age / Piano", "Lo-Fi / Chillhop", "Ambient / Meditation", "Cinematic Neoclassical", "Smooth Jazz", "Acoustic Guitar"])
+        genre_row.addWidget(self.genre_combo)
+        left_layout.addLayout(genre_row)
+
+        # 가사 유무
+        self.inst_check = QCheckBox("보컬 없는 연주곡 (Instrumental BGM)")
+        self.inst_check.setChecked(True)
+        left_layout.addWidget(self.inst_check)
+
+        left_layout.addSpacing(15)
+
+        # 실행 버튼
+        self.gen_btn = QPushButton("🚀 AI 음악 & 영상 자동 생성 시작")
+        self.gen_btn.setObjectName("GenerateBtn")
+        self.gen_btn.clicked.connect(self.start_generation)
+        left_layout.addWidget(self.gen_btn)
+
+        left_layout.addStretch()
+        body_layout.addWidget(left_box, 45)
+
+        # 우측 패널: 실시간 상태 및 로그
+        right_box = QGroupBox("2. 자동화 파이프라인 모니터링")
+        right_layout = QVBoxLayout(right_box)
+
+        self.status_label = QLabel("대기 중... [생성 시작]을 클릭하세요.")
+        self.status_label.setStyleSheet("font-weight: bold; color: #a6e3a1;")
+        right_layout.addWidget(self.status_label)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        right_layout.addWidget(self.progress_bar)
+
+        right_layout.addWidget(QLabel("실시간 처리 콘솔 로그:"))
+        self.log_console = QTextEdit()
+        self.log_console.setReadOnly(True)
+        self.log_console.setStyleSheet("background-color: #11111b; font-family: 'Consolas', monospace; font-size: 11px;")
+        right_layout.addWidget(self.log_console)
+
+        # 결과 버튼 행
+        action_row = QHBoxLayout()
+        self.open_folder_btn = QPushButton("📂 결과 저장 폴더 열기")
+        self.open_folder_btn.clicked.connect(self.open_output_folder)
+        self.open_folder_btn.setEnabled(False)
+
+        self.play_video_btn = QPushButton("▶️ 완성된 1080p 영상 재생")
+        self.play_video_btn.clicked.connect(self.play_video)
+        self.play_video_btn.setEnabled(False)
+
+        action_row.addWidget(self.open_folder_btn)
+        action_row.addWidget(self.play_video_btn)
+        right_layout.addLayout(action_row)
+
+        body_layout.addWidget(right_box, 55)
+        main_layout.addLayout(body_layout)
+
+    def open_settings(self):
+        dialog = SettingsDialog(self)
+        dialog.exec_()
+
+    def start_generation(self):
+        mood = self.mood_input.toPlainText().strip()
+        if not mood:
+            QMessageBox.warning(self, "입력 필요", "원하시는 음악과 영상의 분위기/무드를 입력해주세요.")
+            return
+
+        if not Config.get_gemini_key() or not Config.get_suno_key() or not Config.get_nano_key():
+            QMessageBox.warning(self, "API 키 필요", "상단 [API 키 설정]에서 Gemini 및 Apiframe 키를 등록해주세요.")
+            return
+
+        self.gen_btn.setEnabled(False)
+        self.open_folder_btn.setEnabled(False)
+        self.play_video_btn.setEnabled(False)
+        self.log_console.clear()
+        self.progress_bar.setValue(0)
+
+        genre = self.genre_combo.currentText()
+        is_inst = self.inst_check.isChecked()
+
+        self.worker = AutomationWorker(mood, genre, is_inst)
+        self.worker.progress_signal.connect(self.update_progress)
+        self.worker.log_signal.connect(self.append_log)
+        self.worker.finished_signal.connect(self.on_finished)
+        self.worker.error_signal.connect(self.on_error)
+        self.worker.start()
+
+    def update_progress(self, percent: int, msg: str):
+        self.progress_bar.setValue(percent)
+        self.status_label.setText(msg)
+
+    def append_log(self, text: str):
+        self.log_console.append(text)
+        # 자동 스크롤
+        self.log_console.verticalScrollBar().setValue(
+            self.log_console.verticalScrollBar().maximum()
+        )
+
+    def on_finished(self, mp4_path: str, mp3_path: str, scenes: list):
+        self.gen_btn.setEnabled(True)
+        self.open_folder_btn.setEnabled(True)
+        self.play_video_btn.setEnabled(True)
+        self.last_mp4 = mp4_path
+        QMessageBox.information(self, "제작 완료", f"고화질 1080p 영상 제작이 완료되었습니다!\n\n저장 경로: {mp4_path}")
+
+    def on_error(self, err_msg: str):
+        self.gen_btn.setEnabled(True)
+        QMessageBox.critical(self, "오류 발생", f"작업 중 오류가 발생했습니다:\n{err_msg}")
+
+    def open_output_folder(self):
+        target = Path(self.last_mp4).parent if self.last_mp4 else OUTPUT_DIR
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(target.resolve())))
+
+    def play_video(self):
+        if self.last_mp4 and os.path.exists(self.last_mp4):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(self.last_mp4).resolve())))
+        else:
+            QMessageBox.warning(self, "파일 없음", "재생할 영상 파일이 존재하지 않습니다.")
+
+def run_app():
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
