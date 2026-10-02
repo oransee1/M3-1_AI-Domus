@@ -149,8 +149,9 @@ class AutomationWorker(QThread):
             self.progress_signal.emit(75, "5단계: MoveEditor 영상 합성 및 페이드 인/아웃 인코딩 중...")
 
             # 5. FFmpeg 영상 렌더링 (MoveEditor 페이드 인/페이드 아웃 크로스페이드)
-            self.log_signal.emit(f"🎬 MoveEditor 합성 엔진 가동: 페이드 효과({self.fade_duration}s) 및 1080p MP4 인코딩 시작...")
             renderer = VideoRenderer()
+            actual_audio_duration = renderer.get_audio_duration(audio_file)
+            self.log_signal.emit(f"🎬 MoveEditor 합성 엔진 가동: 오디오 길이({actual_audio_duration:.2f}s), 페이드({self.fade_duration}s) 1080p MP4 인코딩 시작...")
             final_mp4 = work_dir / f"{title}_FHD.mp4"
 
             def render_callback(percent, msg):
@@ -164,7 +165,7 @@ class AutomationWorker(QThread):
                 image_paths=fhd_frames,
                 audio_path=audio_file,
                 output_mp4=final_mp4,
-                total_duration=audio_duration if audio_duration > 0 else None,
+                total_duration=actual_audio_duration,
                 fade_duration=self.fade_duration,
                 progress_callback=render_callback
             )
@@ -179,4 +180,106 @@ class AutomationWorker(QThread):
 
         except Exception as e:
             self.log_signal.emit(f"❌ [에러 발생] {str(e)}")
+            self.error_signal.emit(str(e))
+
+
+class EncodingWorker(QThread):
+    """
+    개발 프로그램 내의 독립 인코딩 엔진 워커:
+    기존 프로젝트 세션 폴더(에셋/오디오)를 대상으로
+    StoryBoard-Division 및 MoveEditor 기반 1080p FHD MP4 영상을 직접 인코딩 합성합니다.
+    """
+    progress_signal = pyqtSignal(int, str)
+    step_signal = pyqtSignal(int)
+    log_signal = pyqtSignal(str)
+    scenes_ready_signal = pyqtSignal(list)
+    finished_signal = pyqtSignal(str, str, list)
+    error_signal = pyqtSignal(str)
+
+    def __init__(self, project_dir: Path, fade_duration: float = 1.5):
+        super().__init__()
+        self.project_dir = Path(project_dir)
+        self.fade_duration = fade_duration
+
+    def run(self):
+        try:
+            self.log_signal.emit(f"🎬 [인코딩 엔진 가동] 프로젝트 디렉토리: {self.project_dir.name}")
+            self.step_signal.emit(4)
+            self.progress_signal.emit(10, "에셋 분석 및 1080p 프레임 준비 중...")
+
+            # 1. 오디오 파일 탐색 (audio.mp3 또는 *.mp3)
+            audio_files = list(self.project_dir.glob("*.mp3"))
+            if not audio_files:
+                raise FileNotFoundError(f"프로젝트 폴더 내에 mp3 오디오 파일이 없습니다: {self.project_dir}")
+            
+            # audio.mp3가 있으면 우선 사용, 없으면 첫 번째 mp3 사용
+            audio_file = next((f for f in audio_files if f.name == "audio.mp3"), audio_files[0])
+            self.log_signal.emit(f"🎵 대상 오디오 파일 확인: {audio_file.name} ({audio_file.stat().st_size:,} bytes)")
+
+            # 2. 씬 이미지 탐색 및 준비
+            frames_dir = self.project_dir / "frames_1080p"
+            scenes_dir = self.project_dir / "scenes"
+            storyboard = self.project_dir / "storyboard_3x3.png"
+
+            fhd_frames = []
+            sliced_paths = []
+
+            if frames_dir.exists() and len(list(frames_dir.glob("*.png"))) >= 9:
+                fhd_frames = sorted(list(frames_dir.glob("*.png")))[:9]
+                sliced_paths = sorted(list(scenes_dir.glob("*.png")))[:9] if scenes_dir.exists() else fhd_frames
+                self.log_signal.emit(f"🖼️ 기존 1080p 와이드 프레임 {len(fhd_frames)}장 확인 완료")
+            elif scenes_dir.exists() and len(list(scenes_dir.glob("*.png"))) >= 9:
+                sliced_paths = sorted(list(scenes_dir.glob("*.png")))[:9]
+                self.log_signal.emit(f"🖼️ 분할 씬 이미지 {len(sliced_paths)}장으로부터 1080p 와이드 프레임 생성 중...")
+                fhd_frames = ImageProcessor.prepare_16_9_frames(sliced_paths, frames_dir)
+            elif storyboard.exists():
+                self.log_signal.emit("✂️ storyboard_3x3.png 감지: 3x3 스토리보드 9분할 슬라이싱 시작...")
+                sliced_paths = ImageProcessor.split_3x3_grid(storyboard, scenes_dir)
+                fhd_frames = ImageProcessor.prepare_16_9_frames(sliced_paths, frames_dir)
+            else:
+                raise FileNotFoundError(f"프로젝트 폴더 내에 씬 이미지나 storyboard_3x3.png가 없습니다: {self.project_dir}")
+
+            # 썸네일 생성 및 GUI 3x3 프리뷰 연동
+            thumb_dir = self.project_dir / "thumbnails"
+            thumb_paths = ImageProcessor.generate_thumbnails(sliced_paths, thumb_dir)
+            self.scenes_ready_signal.emit([str(p) for p in thumb_paths])
+
+            # 3. 1080p 비디오 렌더링 실행
+            self.step_signal.emit(5)
+            self.progress_signal.emit(30, "프로그램 인코딩 엔진: 씬 크로스페이드 및 1080p MP4 합성 시작...")
+
+            renderer = VideoRenderer()
+            actual_audio_duration = renderer.get_audio_duration(audio_file)
+            self.log_signal.emit(f"⏱️ 오디오 재생시간: {actual_audio_duration:.2f}초 (페이드 {self.fade_duration}초 적용)")
+
+            base_name = audio_file.stem
+            if base_name == "audio":
+                base_name = self.project_dir.name
+            final_mp4 = self.project_dir / f"{base_name}_FHD.mp4"
+
+            def render_callback(percent, msg):
+                overall = 30 + int(percent * 0.70)
+                self.progress_signal.emit(overall, msg)
+                if percent % 20 == 0 or percent == 100:
+                    self.log_signal.emit(f"  [인코딩 진행] {msg}")
+
+            renderer.render_slideshow(
+                image_paths=fhd_frames,
+                audio_path=audio_file,
+                output_mp4=final_mp4,
+                total_duration=actual_audio_duration,
+                fade_duration=self.fade_duration,
+                progress_callback=render_callback
+            )
+
+            if not final_mp4.exists() or final_mp4.stat().st_size == 0:
+                raise RuntimeError(f"최종 비디오 파일({final_mp4.name}) 생성 실패")
+
+            self.step_signal.emit(6)
+            self.progress_signal.emit(100, "🎉 프로그램 인코딩 엔진 렌더링 완료!")
+            self.log_signal.emit(f"🏆 [완료] 최종 1080p 영상 생성 성공:\n  {final_mp4}")
+            self.finished_signal.emit(str(final_mp4), str(audio_file), [str(p) for p in sliced_paths])
+
+        except Exception as e:
+            self.log_signal.emit(f"❌ [인코딩 에러] {str(e)}")
             self.error_signal.emit(str(e))

@@ -111,7 +111,7 @@ class VideoRenderer:
         process = subprocess.Popen(
             cmd,
             stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
             text=True,
             errors="ignore",
             bufsize=1
@@ -136,6 +136,9 @@ class VideoRenderer:
             if progress_callback:
                 progress_callback(50, "페이드 필터 오류로 기본 슬라이드 모드로 안전 전환...")
             return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, progress_callback)
+
+        if not output_mp4.exists() or output_mp4.stat().st_size == 0:
+            raise RuntimeError(f"영상 렌더링 실패: 최종 파일이 생성되지 않았습니다 ({output_mp4.name})")
 
         if progress_callback:
             progress_callback(100, "1080p 페이드 영상 렌더링 완료!")
@@ -182,16 +185,21 @@ class VideoRenderer:
         process = subprocess.Popen(
             cmd,
             stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
             text=True,
-            errors="ignore",
-            bufsize=1
+            errors="ignore"
         )
-        process.wait()
+        _, stderr_data = process.communicate()
         try:
             concat_file.unlink(missing_ok=True)
         except Exception:
             pass
+
+        if process.returncode != 0:
+            raise RuntimeError(f"FFmpeg fallback 인코딩 실패 (코드 {process.returncode}): {stderr_data[-300:] if stderr_data else ''}")
+
+        if not output_mp4.exists() or output_mp4.stat().st_size == 0:
+            raise RuntimeError(f"영상 렌더링 후 최종 파일이 생성되지 않았습니다: {output_mp4.name}")
 
         if progress_callback:
             progress_callback(100, "1080p 영상 렌더링 완료!")
