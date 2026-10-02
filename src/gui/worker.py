@@ -1,4 +1,5 @@
 import time
+import re
 from pathlib import Path
 from PyQt5.QtCore import QThread, pyqtSignal
 
@@ -38,7 +39,12 @@ class AutomationWorker(QThread):
             gemini_agent = GeminiPromptAgent()
             plan = gemini_agent.plan_prompts(self.mood, self.genre, self.is_instrumental)
 
-            title = plan.get("title", f"Healing_{timestamp}")
+            raw_title = plan.get("title", f"Healing_{timestamp}")
+            # 윈도우 금지 특수문자(: * ? " < > | / \) 정제하여 NTFS 대체 스트림 오류 완벽 차단
+            safe_title = re.sub(r'[\\/*?:"<>|\r\n\t]', "_", raw_title).strip()
+            safe_title = re.sub(r'_+', '_', safe_title).strip('_')
+            title = safe_title if safe_title else f"Healing_{timestamp}"
+
             suno_prompt = plan.get("suno_prompt", "")
             suno_style = plan.get("suno_style", self.genre)
             image_prompt = plan.get("image_prompt", "")
@@ -109,15 +115,19 @@ class AutomationWorker(QThread):
             if not image_url:
                 raise RuntimeError(f"이미지 다운로드 URL을 획득하지 못했습니다. 응답 데이터: {image_res}")
 
-            # 파일 다운로드
+            # 파일 다운로드 (안전한 파일명 기반)
             audio_file = work_dir / f"{title}.mp3"
             raw_image_file = work_dir / "storyboard_3x3.png"
 
-            self.log_signal.emit("📥 MP3 음원 다운로드 중...")
+            self.log_signal.emit(f"📥 MP3 음원 다운로드 중... ({title}.mp3)")
             client.download_asset(audio_url, audio_file)
+            if not audio_file.exists() or audio_file.stat().st_size == 0:
+                raise RuntimeError(f"음원 파일 다운로드 실패 (0바이트 또는 파일 누락): {audio_url}")
 
             self.log_signal.emit("📥 3x3 스토리보드 이미지 다운로드 중...")
             client.download_asset(image_url, raw_image_file)
+            if not raw_image_file.exists() or raw_image_file.stat().st_size == 0:
+                raise RuntimeError(f"이미지 파일 다운로드 실패 (0바이트 또는 파일 누락): {image_url}")
 
             # 4. 이미지 9분할 크롭 (StoryBoard-Division 정밀 분할)
             self.step_signal.emit(4)
@@ -158,6 +168,9 @@ class AutomationWorker(QThread):
                 fade_duration=self.fade_duration,
                 progress_callback=render_callback
             )
+
+            if not final_mp4.exists() or final_mp4.stat().st_size == 0:
+                raise RuntimeError(f"최종 비디오 파일({final_mp4.name}) 생성에 실패했습니다.")
 
             self.step_signal.emit(6)
             self.progress_signal.emit(100, "🎉 모든 제작 공정이 성공적으로 완료되었습니다!")

@@ -119,4 +119,8 @@ class ApiframeClient:
                         downloaded += len(chunk)
                         if callback and total_length > 0:
                             callback(downloaded, total_length)
+
+        if not save_path.exists() or save_path.stat().st_size == 0:
+            raise IOError(f"다운로드된 파일이 비어 있습니다 (0바이트): {url}")
+
         return save_path
