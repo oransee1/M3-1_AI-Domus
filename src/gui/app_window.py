@@ -6,9 +6,9 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QTextEdit, QComboBox, QCheckBox, QPushButton,
     QProgressBar, QGroupBox, QMessageBox, QDialog, QFormLayout, QGridLayout,
-    QSplitter, QScrollArea
+    QSplitter, QScrollArea, QFrame
 )
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt, QUrl, QTimer
 from PyQt5.QtGui import QFont, QDesktopServices, QPixmap
 from PIL import Image
 
@@ -188,6 +188,141 @@ class SettingsDialog(QDialog):
         QMessageBox.information(self, "완료", "API 키가 저장되었습니다.")
         self.accept()
 
+class RenderingProgressDialog(QDialog):
+    """
+    고화질 영상 렌더링 및 미디어 생성 중 사용자가 실수로 프로그램을
+    강제 종료하지 않도록 안내하고, 실시간 진행시간, 단계, 프로그레스바, 진행율(%)을
+    명확하게 보여주는 전용 진행 안내 창
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("⏳ AI 미디어 생성 및 영상 렌더링 진행 중")
+        self.resize(600, 360)
+        self.setStyleSheet(MODERN_STYLE)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+
+        self.is_finished = False
+        self.elapsed_seconds = 0
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(14)
+        layout.setContentsMargins(22, 22, 22, 22)
+
+        # 1. 상단 경고 및 안내 배너
+        warn_box = QFrame()
+        warn_box.setStyleSheet(
+            "background-color: #2e261f; border: 1px solid #fab387; "
+            "border-radius: 8px; padding: 12px;"
+        )
+        warn_layout = QVBoxLayout(warn_box)
+        warn_layout.setSpacing(6)
+        warn_title = QLabel("⚠️ [필독 안내] 고화질 영상 렌더링 및 생성 파이프라인 가동 중!")
+        warn_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #fab387;")
+        warn_desc = QLabel(
+            "AI 멀티모달 생성과 1080p 영상 합성(FFmpeg)은 시스템 사양 및 음원 길이에 따라\n"
+            "수 분에서 최대 17~20분가량 소요될 수 있습니다. 정상적으로 백그라운드 처리 중이오니\n"
+            "프로그램을 강제 종료하거나 창을 닫지 마시고 잠시만 기다려주세요."
+        )
+        warn_desc.setStyleSheet("font-size: 12px; color: #cdd6f4; line-height: 140%;")
+        warn_layout.addWidget(warn_title)
+        warn_layout.addWidget(warn_desc)
+        layout.addWidget(warn_box)
+
+        # 2. 진행 시간 및 단계 정보
+        info_layout = QHBoxLayout()
+        self.time_label = QLabel("⏱️ 진행 시간: 00:00:00")
+        self.time_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #89b4fa;")
+
+        self.step_label = QLabel("📌 진행 단계: [1/5] AI 기획 에이전트")
+        self.step_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #a6e3a1;")
+
+        info_layout.addWidget(self.time_label)
+        info_layout.addStretch()
+        info_layout.addWidget(self.step_label)
+        layout.addLayout(info_layout)
+
+        # 3. 프로그레스바 및 진행율 (%)
+        prog_header = QHBoxLayout()
+        prog_title = QLabel("전체 파이프라인 실시간 진행률:")
+        prog_title.setStyleSheet("font-size: 12px; font-weight: bold; color: #bac2de;")
+        self.percent_label = QLabel("0%")
+        self.percent_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #a6e3a1;")
+        prog_header.addWidget(prog_title)
+        prog_header.addStretch()
+        prog_header.addWidget(self.percent_label)
+        layout.addLayout(prog_header)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFixedHeight(26)
+        layout.addWidget(self.progress_bar)
+
+        # 4. 세부 상태 메시지
+        self.detail_label = QLabel("작업 준비 중...")
+        self.detail_label.setStyleSheet("font-size: 12px; color: #a6adc8; font-style: italic;")
+        layout.addWidget(self.detail_label)
+
+        layout.addStretch()
+
+        # 5. 하단 버튼 (팝업 숨기고 메인 창에서 모니터링)
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        self.hide_btn = QPushButton("🔽 메인 창에서 모니터링하기 (팝업 최소화)")
+        self.hide_btn.clicked.connect(self.hide)
+        btn_layout.addWidget(self.hide_btn)
+        layout.addLayout(btn_layout)
+
+        # 타이머 설정
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._tick)
+
+    def start_timer(self):
+        self.elapsed_seconds = 0
+        self.is_finished = False
+        self.time_label.setText("⏱️ 진행 시간: 00:00:00")
+        self.progress_bar.setValue(0)
+        self.percent_label.setText("0%")
+        self.timer.start(1000)
+
+    def _tick(self):
+        self.elapsed_seconds += 1
+        mins, secs = divmod(self.elapsed_seconds, 60)
+        hrs, mins = divmod(mins, 60)
+        self.time_label.setText(f"⏱️ 진행 시간: {hrs:02d}:{mins:02d}:{secs:02d}")
+
+    def update_progress(self, percent: int, msg: str):
+        self.progress_bar.setValue(percent)
+        self.percent_label.setText(f"{percent}%")
+        self.detail_label.setText(msg)
+
+    def update_step(self, step_num: int):
+        step_names = [
+            "AI 기획 에이전트",
+            "Suno & Nano 발주",
+            "미디어 에셋 다운로드",
+            "3x3 스토리보드 분할",
+            "1080p 영상 페이드 인코딩"
+        ]
+        if 1 <= step_num <= 5:
+            self.step_label.setText(f"📌 진행 단계: [{step_num}/5] {step_names[step_num - 1]}")
+        elif step_num == 6:
+            self.step_label.setText("🎉 [완료] 제작 완료!")
+
+    def set_completed(self):
+        self.is_finished = True
+        self.timer.stop()
+        self.progress_bar.setValue(100)
+        self.percent_label.setText("100%")
+        self.detail_label.setText("모든 렌더링 작업이 성공적으로 완료되었습니다!")
+
+    def closeEvent(self, event):
+        if not self.is_finished:
+            # 렌더링 도중 X를 누르면 팝업만 숨기고 메인 창에서 계속 진행되도록 보호
+            event.ignore()
+            self.hide()
+        else:
+            event.accept()
+
 class MainWindow(QMainWindow):
     STEP_NAMES = [
         "1. AI 기획",
@@ -207,6 +342,7 @@ class MainWindow(QMainWindow):
         self.last_mp4 = None
         self.scene_labels = []
         self.step_badges = []
+        self.progress_dialog = None
 
         self.init_ui()
 
@@ -441,6 +577,15 @@ class MainWindow(QMainWindow):
         self.worker.scenes_ready_signal.connect(self.display_scenes)
         self.worker.finished_signal.connect(self.on_finished)
         self.worker.error_signal.connect(self.on_error)
+
+        # 렌더링 진행 팝업 창 가동 (실시간 진행시간, 단계, 프로그레스바, 진행율)
+        if not self.progress_dialog:
+            self.progress_dialog = RenderingProgressDialog(self)
+        self.worker.step_signal.connect(self.progress_dialog.update_step)
+        self.worker.progress_signal.connect(self.progress_dialog.update_progress)
+        self.progress_dialog.start_timer()
+        self.progress_dialog.show()
+
         self.worker.start()
 
     def update_step(self, step_num: int):
@@ -496,11 +641,52 @@ class MainWindow(QMainWindow):
         self.open_folder_btn.setEnabled(True)
         self.play_video_btn.setEnabled(True)
         self.last_mp4 = mp4_path
-        QMessageBox.information(self, "제작 완료", f"고화질 1080p 영상 제작이 완료되었습니다!\n\n저장 경로: {mp4_path}")
+
+        if self.progress_dialog:
+            self.progress_dialog.set_completed()
+
+        QMessageBox.information(
+            self,
+            "🎉 렌더링 제작 완료",
+            f"고화질 1080p 영상 제작 및 인코딩이 모두 성공적으로 완료되었습니다!\n\n"
+            f"저장 파일: {os.path.basename(mp4_path)}\n"
+            f"위치: {mp4_path}"
+        )
 
     def on_error(self, err_msg: str):
         self.gen_btn.setEnabled(True)
+        if self.progress_dialog:
+            self.progress_dialog.hide()
         QMessageBox.critical(self, "오류 발생", f"작업 중 오류가 발생했습니다:\n{err_msg}")
+
+    def closeEvent(self, event):
+        """렌더링 진행 중 사용자가 실수로 프로그램을 끄지 못하도록 확인 모달 제공"""
+        if self.worker and self.worker.isRunning():
+            reply = QMessageBox.question(
+                self,
+                "⚠️ 렌더링 진행 중 강제 종료 확인",
+                "고화질 영상 렌더링 및 생성이 현재 백그라운드에서 진행 중입니다.\n\n"
+                "작업은 시스템 사양에 따라 최대 17~20분가량 소요될 수 있으며,\n"
+                "지금 프로그램을 강제 종료하시면 생성 중인 모든 영상과 음악이 손실됩니다.\n\n"
+                "정말로 작업을 중단하고 프로그램을 강제 종료하시겠습니까?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                try:
+                    self.worker.terminate()
+                except Exception:
+                    pass
+                if self.progress_dialog:
+                    self.progress_dialog.timer.stop()
+                    self.progress_dialog.close()
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            if self.progress_dialog:
+                self.progress_dialog.close()
+            event.accept()
 
     def open_output_folder(self):
         target = Path(self.last_mp4).parent if self.last_mp4 else OUTPUT_DIR
