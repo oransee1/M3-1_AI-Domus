@@ -420,10 +420,31 @@ class MainWindow(QMainWindow):
         fade_row.addWidget(self.fade_combo)
         left_layout.addLayout(fade_row)
 
-        # 가사 유무
-        self.inst_check = QCheckBox("보컬 없는 연주곡 (Instrumental BGM)")
-        self.inst_check.setChecked(True)
-        left_layout.addWidget(self.inst_check)
+        # 가사 유무 선택
+        lyrics_row = QHBoxLayout()
+        lyrics_row.addWidget(QLabel("가사 유무:"))
+        self.lyrics_combo = QComboBox()
+        self.lyrics_combo.addItems([
+            "가사 없음 (보컬 없는 연주곡 - Instrumental BGM)",
+            "가사 있음 (보컬 곡 - Vocal Song with Lyrics)"
+        ])
+        self.lyrics_combo.currentIndexChanged.connect(self._on_lyrics_changed)
+        lyrics_row.addWidget(self.lyrics_combo)
+        left_layout.addLayout(lyrics_row)
+
+        # 가사 직접 입력란 (가사 있음 선택 시 노출, 기본 숨김)
+        self.lyrics_box = QWidget()
+        lyrics_box_layout = QVBoxLayout(self.lyrics_box)
+        lyrics_box_layout.setContentsMargins(0, 4, 0, 4)
+        lyrics_guide = QLabel("✍️ 보컬 가사 (선택 사항 - 미입력 시 AI가 무드에 맞춰 자동 작사):")
+        lyrics_guide.setStyleSheet("font-size: 11px; color: #a6adc8;")
+        self.lyrics_input = QTextEdit()
+        self.lyrics_input.setPlaceholderText("예시:\n[Verse 1]\n창가에 스며든 따스한 바람\n[Chorus]\n기억해요 그대의 아름다운 날들...")
+        self.lyrics_input.setFixedHeight(75)
+        lyrics_box_layout.addWidget(lyrics_guide)
+        lyrics_box_layout.addWidget(self.lyrics_input)
+        left_layout.addWidget(self.lyrics_box)
+        self.lyrics_box.setVisible(False)
 
         left_layout.addSpacing(15)
 
@@ -545,6 +566,10 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self)
         dialog.exec_()
 
+    def _on_lyrics_changed(self, index: int):
+        # 0: 가사 없음 (연주곡), 1: 가사 있음 (보컬 곡)
+        self.lyrics_box.setVisible(index == 1)
+
     def start_generation(self):
         mood = self.mood_input.toPlainText().strip()
         if not mood:
@@ -569,7 +594,8 @@ class MainWindow(QMainWindow):
             lbl.setText(f"Scene {i+1}\n(생성 중...)")
 
         genre = self.genre_combo.currentText()
-        is_inst = self.inst_check.isChecked()
+        is_inst = (self.lyrics_combo.currentIndex() == 0)
+        custom_lyrics = self.lyrics_input.toPlainText().strip() if not is_inst else ""
 
         # 페이드 시간 파싱
         fade_txt = self.fade_combo.currentText()
@@ -581,7 +607,7 @@ class MainWindow(QMainWindow):
         elif "0초" in fade_txt:
             fade_dur = 0.0
 
-        self.worker = AutomationWorker(mood, genre, is_inst, fade_duration=fade_dur)
+        self.worker = AutomationWorker(mood, genre, is_inst, fade_duration=fade_dur, custom_lyrics=custom_lyrics)
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.log_signal.connect(self.append_log)

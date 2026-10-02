@@ -11,16 +11,36 @@ class GeminiPromptAgent:
             raise ValueError("Gemini API Key가 설정되지 않았습니다. .env 또는 설정창에서 입력해주세요.")
         self.client = genai.Client(api_key=self.api_key)
 
-    def plan_prompts(self, mood: str, genre: str = "New Age", is_instrumental: bool = True) -> dict:
+    def plan_prompts(self, mood: str, genre: str = "New Age", is_instrumental: bool = True, custom_lyrics: str = "") -> dict:
         """
         사용자의 한국어 입력(분위기, 장르 등)을 분석하여
         Suno 음악 프롬프트와 Nano Banana 3x3 그리드 스토리보드 프롬프트를 동시 기획합니다.
+        가사 유무(is_instrumental) 및 사용자 지정 가사(custom_lyrics)를 완벽 지원합니다.
         """
+        if is_instrumental:
+            suno_prompt_rule = (
+                "Detailed description of melody, instruments (e.g. acoustic piano, warm cello, soft ambient pads), "
+                "BPM, emotion, atmosphere. 30-60 words. Emphasize pure instrumental BGM, serene and peaceful, no vocals."
+            )
+            suno_style_rule = "Comma separated genre tags e.g. new age, piano solo, ambient neoclassical, instrumental"
+        else:
+            if custom_lyrics:
+                escaped_lyrics = custom_lyrics.replace('"', '\\"').replace('\n', ' ')
+                suno_prompt_rule = (
+                    f"Format and polish the user-provided lyrics into cohesive song lyrics with standard section tags ([Verse], [Chorus], [Outro]). Lyrics: {escaped_lyrics}"
+                )
+            else:
+                suno_prompt_rule = (
+                    "Poetic, emotionally resonant song lyrics matching the mood and genre (Korean or English). "
+                    "Structured into standard song sections: [Verse 1], [Chorus], [Verse 2], [Chorus], [Outro]. 15-25 lines."
+                )
+            suno_style_rule = "Comma separated genre and vocal tags e.g. acoustic ballad, gentle female vocal, emotional, soothing, soft piano"
+
         system_instruction = (
             "You are an expert Creative Director & AI Prompt Engineer for YouTube music channels "
             "(specializing in healing, new age, lo-fi, sleep, and meditation music like 'Dancing with Angels' or 'Gentle Mind').\n"
             "Your mission is to take the user's brief concept and produce perfectly aligned prompts for:\n"
-            "1. Suno AI (Music generation): optimized English music description and genre/style tags.\n"
+            "1. Suno AI (Music generation): optimized English music description and genre/style tags (or structured lyrics if vocal mode).\n"
             "2. Nano Banana 2 Lite (Image generation): a prompt specifically requesting a '3x3 grid storyboard' "
             "with 9 distinct sequential cinematic scenes. Each individual scene frame MUST be in 16:9 widescreen ratio, "
             "and the entire storyboard image MUST be in crisp Ultra-HD 4K resolution (3840x2160), "
@@ -28,17 +48,18 @@ class GeminiPromptAgent:
             "Respond ONLY with a valid JSON object matching this schema:\n"
             "{\n"
             '  "title": "English or Korean poetic title",\n'
-            '  "suno_prompt": "Detailed description of melody, instruments (e.g. acoustic piano, warm cello, soft ambient pads), BPM, emotion, atmosphere. 30-60 words.",\n'
-            '  "suno_style": "Comma separated genre tags e.g. new age, piano solo, ambient neoclassical, instrumental",\n'
+            f'  "suno_prompt": "{suno_prompt_rule}",\n'
+            f'  "suno_style": "{suno_style_rule}",\n'
             '  "image_prompt": "Prompt for generating a 3x3 grid (9 distinct scenes) storyboard illustration in 4K resolution (3840x2160). Must begin with \'3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, ultra-detailed...\' and specify art style (e.g. soft pastel watercolor, Studio Ghibli inspired, or warm dreamy digital painting), lighting, and serene healing mood. High quality, 4K UHD, 16:9 aspect ratio per scene, razor-sharp details."\n'
             "}"
         )
 
+        lyrics_info = f"\n- Custom Lyrics: {custom_lyrics}" if (not is_instrumental and custom_lyrics) else ""
         user_content = (
             f"User Concept:\n"
             f"- Mood / Theme: {mood}\n"
             f"- Genre: {genre}\n"
-            f"- Instrumental: {'Yes (No vocals)' if is_instrumental else 'No (With vocals)'}\n\n"
+            f"- Mode: {'Instrumental (Pure BGM, No Vocals)' if is_instrumental else 'Vocal Song (With Lyrics)'}{lyrics_info}\n\n"
             f"Generate the cohesive multimedia creative plan in JSON format."
         )
 
@@ -78,19 +99,38 @@ class GeminiPromptAgent:
                 continue
 
         # 모든 모델 일시 부하(503) 시 중단 없는 지능형 백업 플랜 가동
-        return self._smart_fallback_plan(mood, genre, is_instrumental)
+        return self._smart_fallback_plan(mood, genre, is_instrumental, custom_lyrics)
 
     @staticmethod
-    def _smart_fallback_plan(mood: str, genre: str, is_instrumental: bool) -> dict:
+    def _smart_fallback_plan(mood: str, genre: str, is_instrumental: bool, custom_lyrics: str = "") -> dict:
         """Gemini 서버 일시 부하(503) 시에도 제작이 중단되지 않도록 하는 지능형 백업 플래너"""
         title = f"{genre} - Autumn Serenity" if any(w in mood for w in ["가을", "단풍", "10월"]) else f"{genre} - Peaceful Healing"
-        inst_desc = "instrumental, soothing and peaceful, no vocals" if is_instrumental else "warm gentle vocals"
         
-        suno_prompt = (
-            f"Relaxing {genre.lower()} music, warm acoustic piano chords, soft gentle cello melodies, "
-            f"subtle background vinyl warmth, calm healing atmosphere, {inst_desc}. 72 BPM."
-        )
-        suno_style = f"{genre.lower()}, acoustic, piano, ambient, healing, lo-fi neoclassical"
+        if is_instrumental:
+            suno_prompt = (
+                f"Relaxing {genre.lower()} music, warm acoustic piano chords, soft gentle cello melodies, "
+                f"subtle background vinyl warmth, calm healing atmosphere, instrumental, soothing, no vocals. 72 BPM."
+            )
+            suno_style = f"{genre.lower()}, acoustic, piano, ambient, healing, instrumental"
+        else:
+            if custom_lyrics:
+                suno_prompt = custom_lyrics
+            else:
+                suno_prompt = (
+                    f"[Verse 1]\n"
+                    f"창가에 스며든 따스한 바람\n"
+                    f"지친 마음에 건네는 작은 위로처럼\n"
+                    f"조용히 흐르는 시간 속에서\n"
+                    f"온전한 평온을 마주해요\n\n"
+                    f"[Chorus]\n"
+                    f"기억해요 그대의 소중한 순간\n"
+                    f"따뜻한 별빛이 감싸 안듯\n"
+                    f"이 노래가 마음에 머물러\n"
+                    f"포근한 안식이 되길\n\n"
+                    f"[Outro]\n"
+                    f"편안한 꿈결 속으로..."
+                )
+            suno_style = f"{genre.lower()}, acoustic, gentle female vocal, healing ballad, emotional piano"
         
         image_prompt = (
             f"3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, ultra-detailed. "

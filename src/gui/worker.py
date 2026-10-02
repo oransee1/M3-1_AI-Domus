@@ -17,12 +17,13 @@ class AutomationWorker(QThread):
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5):
+    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = ""):
         super().__init__()
         self.mood = mood
         self.genre = genre
         self.is_instrumental = is_instrumental
         self.fade_duration = fade_duration
+        self.custom_lyrics = custom_lyrics
 
     def run(self):
         try:
@@ -35,9 +36,13 @@ class AutomationWorker(QThread):
             self.progress_signal.emit(5, "1단계: Gemini AI 기획 에이전트 가동 중...")
 
             # 1. Gemini AI 기획
+            if self.is_instrumental:
+                self.log_signal.emit("🎵 [음악 모드] 보컬 없는 순수 연주곡 (Instrumental BGM)")
+            else:
+                self.log_signal.emit("🎤 [음악 모드] 보컬 곡 (가사 포함 - Vocal Song with Lyrics)")
             self.log_signal.emit("🧠 Gemini AI 기획 에이전트가 무드 분석 및 멀티모달 프롬프트 동시 기획을 시작합니다...")
             gemini_agent = GeminiPromptAgent()
-            plan = gemini_agent.plan_prompts(self.mood, self.genre, self.is_instrumental)
+            plan = gemini_agent.plan_prompts(self.mood, self.genre, self.is_instrumental, self.custom_lyrics)
 
             raw_title = plan.get("title", f"Healing_{timestamp}")
             # 윈도우 금지 특수문자(: * ? " < > | / \) 정제하여 NTFS 대체 스트림 오류 완벽 차단
@@ -50,7 +55,12 @@ class AutomationWorker(QThread):
             image_prompt = plan.get("image_prompt", "")
 
             self.log_signal.emit(f"✨ [AI 기획 완료] 곡명: {title}")
-            self.log_signal.emit(f"🎵 Suno 음악 프롬프트: {suno_prompt}")
+            if self.is_instrumental:
+                self.log_signal.emit(f"🎵 Suno 음악 프롬프트: {suno_prompt}")
+            else:
+                lyrics_preview = suno_prompt.replace('\n', ' ')[:90]
+                self.log_signal.emit(f"🎤 Suno 보컬 가사: {lyrics_preview}...")
+                self.log_signal.emit(f"🎵 Suno 보컬 스타일: {suno_style}")
             self.log_signal.emit(f"🎨 Nano Banana 3x3 4K(16:9) 이미지 프롬프트: {image_prompt[:90]}...")
             
             self.step_signal.emit(2)
