@@ -51,7 +51,7 @@ class AutomationWorker(QThread):
 
             self.log_signal.emit(f"✨ [AI 기획 완료] 곡명: {title}")
             self.log_signal.emit(f"🎵 Suno 음악 프롬프트: {suno_prompt}")
-            self.log_signal.emit(f"🎨 Nano Banana 3x3 이미지 프롬프트: {image_prompt[:90]}...")
+            self.log_signal.emit(f"🎨 Nano Banana 3x3 4K(16:9) 이미지 프롬프트: {image_prompt[:90]}...")
             
             self.step_signal.emit(2)
             self.progress_signal.emit(20, "2단계: Apiframe 미디어 생성 발주 중...")
@@ -62,9 +62,9 @@ class AutomationWorker(QThread):
             suno_job_id = client.create_music_task(suno_prompt, suno_style, title, self.is_instrumental)
             self.log_signal.emit(f"✅ Suno Job ID 발급 완료: {suno_job_id}")
 
-            self.log_signal.emit("📡 Apiframe을 통해 Nano Banana 2 Lite 이미지 작업을 요청합니다...")
-            image_job_id = client.create_image_task(image_prompt)
-            self.log_signal.emit(f"✅ Nano Banana Job ID 발급 완료: {image_job_id}")
+            self.log_signal.emit("📡 Apiframe을 통해 Nano Banana 2 Lite 4K (16:9 씬, 9장) 이미지 작업을 요청합니다...")
+            image_job_id = client.create_image_task(image_prompt, aspect_ratio="16:9", resolution="4K")
+            self.log_signal.emit(f"✅ Nano Banana 4K Job ID 발급 완료: {image_job_id}")
 
             self.step_signal.emit(3)
             self.progress_signal.emit(35, "3단계: AI 오디오 및 비주얼 에셋 생성 대기 중...")

@@ -43,9 +43,16 @@ class ApiframeClient:
             raise RuntimeError(f"응답에서 jobId를 찾을 수 없습니다: {data}")
         return job_id
 
-    def create_image_task(self, prompt: str, model: str = "nano-banana-2-lite") -> str:
+    def create_image_task(
+        self,
+        prompt: str,
+        model: str = "nano-banana-2-lite",
+        aspect_ratio: str = "16:9",
+        resolution: str = "4K"
+    ) -> str:
         """
         Nano Banana 2 Lite 이미지 생성을 요청하고 jobId를 반환합니다.
+        각 씬 16:9 비율 9장 및 전체 4K 고해상도 생성을 위해 nanoBananaParams를 적용합니다.
         """
         if not self.nano_key:
             raise ValueError("Apiframe Nano Banana API 키가 설정되지 않았습니다.")
@@ -57,7 +64,12 @@ class ApiframeClient:
         }
         payload = {
             "model": model,
-            "prompt": prompt
+            "prompt": prompt,
+            "nanoBananaParams": {
+                "aspect_ratio": aspect_ratio,
+                "resolution": resolution,
+                "output_format": "png"
+            }
         }
 
         resp = requests.post(url, json=payload, headers=headers, timeout=30)
