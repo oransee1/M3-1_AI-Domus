@@ -94,9 +94,9 @@ class VideoRenderer:
             filter_parts.append(
                 f"[v_crossfaded]fade=t=in:st=0:d={fade_duration:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_duration:.3f}[v_fade]"
             )
-            # 좌측 상단 로고 오버레이 (가로 최대 240px 비율 유지, 좌측 35px / 상단 35px 여백)
+            # 좌측 상단 로고 오버레이 (50x50px 규격, 좌측 35px / 상단 35px 여백)
             filter_parts.append(
-                f"[{logo_index}:v]scale=w='min(240,iw)':h=-1[logo_scaled]"
+                f"[{logo_index}:v]scale=w='min(50,iw)':h=-1[logo_scaled]"
             )
             filter_parts.append(
                 f"[v_fade][logo_scaled]overlay=35:35[vout]"
@@ -204,7 +204,7 @@ class VideoRenderer:
             safe_logo = str(Path(logo_path).resolve()).replace("\\", "/")
             cmd.extend([
                 "-i", safe_logo,
-                "-filter_complex", "[2:v]scale=w='min(240,iw)':h=-1[logo];[0:v][logo]overlay=35:35[vout]",
+                "-filter_complex", "[2:v]scale=w='min(50,iw)':h=-1[logo];[0:v][logo]overlay=35:35[vout]",
                 "-map", "[vout]",
                 "-map", "1:a"
             ])
