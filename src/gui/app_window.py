@@ -449,6 +449,7 @@ class MainWindow(QMainWindow):
         # 로고 이미지 선택 (영상 좌측 상단 오버레이)
         logo_row = QHBoxLayout()
         logo_label = QLabel("로고 이미지:")
+        logo_label.setFixedWidth(72)
         logo_row.addWidget(logo_label)
 
         self.logo_path_input = QLineEdit()
@@ -467,6 +468,24 @@ class MainWindow(QMainWindow):
         logo_row.addWidget(self.logo_clear_btn)
 
         left_layout.addLayout(logo_row)
+
+        # 영상 제목 입력 (영상 우측 상단 오버레이)
+        title_row = QHBoxLayout()
+        title_label = QLabel("영상 제목:")
+        title_label.setFixedWidth(72)
+        title_row.addWidget(title_label)
+
+        self.title_input = QLineEdit()
+        self.title_input.setPlaceholderText("선택 사항 (영상 우측 상단 표시 제목 입력... 미입력 시 AI 제목)")
+        title_row.addWidget(self.title_input)
+
+        self.title_clear_btn = QPushButton("❌")
+        self.title_clear_btn.setFixedWidth(36)
+        self.title_clear_btn.setToolTip("영상 제목 지우기")
+        self.title_clear_btn.clicked.connect(lambda: self.title_input.clear())
+        title_row.addWidget(self.title_clear_btn)
+
+        left_layout.addLayout(title_row)
 
         left_layout.addSpacing(15)
 
@@ -632,6 +651,7 @@ class MainWindow(QMainWindow):
         is_inst = (self.lyrics_combo.currentIndex() == 0)
         custom_lyrics = self.lyrics_input.toPlainText().strip() if not is_inst else ""
         logo_path = self.logo_path_input.text().strip()
+        video_title = self.title_input.text().strip()
 
         # 페이드 시간 파싱
         fade_txt = self.fade_combo.currentText()
@@ -647,7 +667,8 @@ class MainWindow(QMainWindow):
             mood, genre, is_inst,
             fade_duration=fade_dur,
             custom_lyrics=custom_lyrics,
-            logo_path=logo_path
+            logo_path=logo_path,
+            video_title=video_title
         )
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
@@ -706,8 +727,14 @@ class MainWindow(QMainWindow):
             fade_dur = 0.0
 
         logo_path = self.logo_path_input.text().strip()
+        video_title = self.title_input.text().strip()
 
-        self.worker = EncodingWorker(p, fade_duration=fade_dur, logo_path=logo_path)
+        self.worker = EncodingWorker(
+            p,
+            fade_duration=fade_dur,
+            logo_path=logo_path,
+            video_title=video_title
+        )
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.log_signal.connect(self.append_log)

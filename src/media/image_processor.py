@@ -146,3 +146,79 @@ class ImageProcessor:
         resized.save(output_file, "PNG")
         return output_file
 
+    @staticmethod
+    def create_title_overlay(
+        title_text: str,
+        output_file: Path,
+        font_size: int = 24,
+        max_width: int = 800
+    ) -> Path:
+        """
+        영상 우측 상단(Top-Right)에 합성할 세련되고 가독성 높은 반투명 배지 형태의
+        제목 오버레이(RGBA PNG) 이미지를 자동 생성합니다.
+        Windows 시스템 한글 폰트(맑은 고딕 등)를 탐색하여 글자 깨짐 없이 선명하게 렌더링합니다.
+        """
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        from PIL import ImageDraw, ImageFont
+
+        # 폰트 로드 (맑은 고딕 볼드 -> 맑은 고딕 -> 굴림 -> Arial -> 기본 폰트)
+        font_candidates = [
+            "C:/Windows/Fonts/malgunbd.ttf",
+            "C:/Windows/Fonts/malgun.ttf",
+            "C:/Windows/Fonts/gulim.ttc",
+            "C:/Windows/Fonts/batang.ttc",
+            "C:/Windows/Fonts/arialbd.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+        ]
+        font = None
+        for fp in font_candidates:
+            if Path(fp).exists():
+                try:
+                    font = ImageFont.truetype(fp, font_size)
+                    break
+                except Exception:
+                    continue
+        if font is None:
+            font = ImageFont.load_default()
+
+        # 긴 제목 길이 제한 및 말줄임표 처리
+        text = title_text.strip()
+        dummy = Image.new("RGBA", (1, 1))
+        draw_d = ImageDraw.Draw(dummy)
+
+        while len(text) > 4:
+            bbox = draw_d.textbbox((0, 0), text, font=font)
+            w = bbox[2] - bbox[0]
+            if w <= max_width:
+                break
+            text = text[:-4] + "..."
+
+        bbox = draw_d.textbbox((0, 0), text, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+
+        pad_x = 18
+        pad_y = 10
+        img_w = text_w + pad_x * 2
+        img_h = max(46, text_h + pad_y * 2)
+
+        overlay_img = Image.new("RGBA", (img_w, img_h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay_img)
+
+        # 고급스럽고 모던한 다크 반투명 필(Pill) 배지 배경 (보더 포함)
+        draw.rounded_rectangle(
+            [(0, 0), (img_w - 1, img_h - 1)],
+            radius=10,
+            fill=(17, 17, 27, 190),
+            outline=(255, 255, 255, 45),
+            width=1
+        )
+
+        # 텍스트 수직 및 수평 중앙 정렬
+        tx = pad_x - bbox[0]
+        ty = (img_h - text_h) // 2 - bbox[1]
+        draw.text((tx, ty), text, font=font, fill=(255, 255, 255, 245))
+
+        overlay_img.save(output_file, "PNG")
+        return output_file
+

@@ -17,7 +17,7 @@ class AutomationWorker(QThread):
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = "", logo_path: str = ""):
+    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = "", logo_path: str = "", video_title: str = ""):
         super().__init__()
         self.mood = mood
         self.genre = genre
@@ -25,6 +25,7 @@ class AutomationWorker(QThread):
         self.fade_duration = fade_duration
         self.custom_lyrics = custom_lyrics
         self.logo_path = logo_path
+        self.video_title = video_title
 
     def run(self):
         try:
@@ -52,8 +53,10 @@ class AutomationWorker(QThread):
             )
 
             raw_title = plan.get("title", f"Healing_{timestamp}")
+            # 사용자가 입력창에 제목을 지정한 경우 사용자 제목 우선 적용, 미입력 시 AI 기획 제목 적용
+            chosen_title = self.video_title.strip() if self.video_title.strip() else raw_title
             # 윈도우 금지 특수문자(: * ? " < > | / \) 정제하여 NTFS 대체 스트림 오류 완벽 차단
-            safe_title = re.sub(r'[\\/*?:"<>|\r\n\t]', "_", raw_title).strip()
+            safe_title = re.sub(r'[\\/*?:"<>|\r\n\t]', "_", chosen_title).strip()
             safe_title = re.sub(r'_+', '_', safe_title).strip('_')
             title = safe_title if safe_title else f"Healing_{timestamp}"
 
@@ -190,6 +193,18 @@ class AutomationWorker(QThread):
                     self.log_signal.emit(f"⚠️ [로고 처리 경고] 로고 로딩 실패 ({e}) - 로고 없이 렌더링을 진행합니다.")
                     prepared_logo = None
 
+            # 영상 제목 배지 이미지 생성 및 준비 (지정된 경우 영상 우측 상단 오버레이)
+            prepared_title_path = None
+            display_title = self.video_title.strip()
+            if display_title:
+                try:
+                    prepared_title_path = work_dir / "title_overlay.png"
+                    ImageProcessor.create_title_overlay(display_title, prepared_title_path)
+                    self.log_signal.emit(f"🏷️ [영상 제목 오버레이] '{display_title}' 배지 생성 완료 ➜ 영상 우측 상단에 반영됩니다.")
+                except Exception as e:
+                    self.log_signal.emit(f"⚠️ [제목 처리 경고] 제목 오버레이 생성 실패 ({e}) - 제목 없이 렌더링을 진행합니다.")
+                    prepared_title_path = None
+
             renderer.render_slideshow(
                 image_paths=fhd_frames,
                 audio_path=audio_file,
@@ -197,6 +212,7 @@ class AutomationWorker(QThread):
                 total_duration=actual_audio_duration,
                 fade_duration=self.fade_duration,
                 logo_path=prepared_logo,
+                title_path=prepared_title_path,
                 progress_callback=render_callback
             )
 
@@ -226,11 +242,12 @@ class EncodingWorker(QThread):
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, project_dir: Path, fade_duration: float = 1.5, logo_path: str = ""):
+    def __init__(self, project_dir: Path, fade_duration: float = 1.5, logo_path: str = "", video_title: str = ""):
         super().__init__()
         self.project_dir = Path(project_dir)
         self.fade_duration = fade_duration
         self.logo_path = logo_path
+        self.video_title = video_title
 
     def run(self):
         try:
@@ -305,6 +322,18 @@ class EncodingWorker(QThread):
                     self.log_signal.emit(f"⚠️ [로고 처리 경고] 로고 로딩 실패 ({e}) - 로고 없이 렌더링을 진행합니다.")
                     prepared_logo = None
 
+            # 영상 제목 배지 이미지 생성 및 준비 (지정된 경우 영상 우측 상단 오버레이)
+            prepared_title_path = None
+            display_title = self.video_title.strip()
+            if display_title:
+                try:
+                    prepared_title_path = self.project_dir / "title_overlay.png"
+                    ImageProcessor.create_title_overlay(display_title, prepared_title_path)
+                    self.log_signal.emit(f"🏷️ [영상 제목 오버레이] '{display_title}' 배지 생성 완료 ➜ 영상 우측 상단에 반영됩니다.")
+                except Exception as e:
+                    self.log_signal.emit(f"⚠️ [제목 처리 경고] 제목 오버레이 생성 실패 ({e}) - 제목 없이 렌더링을 진행합니다.")
+                    prepared_title_path = None
+
             renderer.render_slideshow(
                 image_paths=fhd_frames,
                 audio_path=audio_file,
@@ -312,6 +341,7 @@ class EncodingWorker(QThread):
                 total_duration=actual_audio_duration,
                 fade_duration=self.fade_duration,
                 logo_path=prepared_logo,
+                title_path=prepared_title_path,
                 progress_callback=render_callback
             )
 

@@ -30,6 +30,7 @@ class VideoRenderer:
         total_duration: Optional[float] = None,
         fade_duration: float = 1.5,
         logo_path: Optional[Path] = None,
+        title_path: Optional[Path] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Path:
         """
@@ -37,7 +38,8 @@ class VideoRenderer:
         9장의 씬 이미지를 BGM 길이에 맞춰 균등 배분하고,
         씬 간 부드러운 크로스페이드(Fade In / Fade Out) 전환 효과 및
         영상 시작/종료 페이드 효과를 적용하여 1080p FHD MP4 비디오로 렌더링합니다.
-        외부 로고 이미지가 지정된 경우 영상 좌측 상단(Top-Left)에 오버레이 합성합니다.
+        외부 로고 이미지가 지정된 경우 영상 좌측 상단(Top-Left: 35:35)에 오버레이 합성하며,
+        영상 제목이 지정된 경우 영상 우측 상단(Top-Right: W-w-35:35)에 오버레이 합성합니다.
         """
         output_mp4.parent.mkdir(parents=True, exist_ok=True)
         if total_duration is None or total_duration <= 0:
@@ -48,10 +50,11 @@ class VideoRenderer:
             raise ValueError("렌더링할 이미지가 없습니다.")
 
         has_logo = bool(logo_path and Path(logo_path).exists())
+        has_title = bool(title_path and Path(title_path).exists())
 
         # 페이드 시간이 비활성화되어 있거나 이미지가 1장일 경우 고속 concat 모드
         if fade_duration <= 0 or num_images < 2:
-            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, progress_callback)
+            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, title_path, progress_callback)
 
         # MoveEditor-AutoProgram 방식: 오버랩 페이드 시간을 고려한 씬 지속시간 계산
         # N * scene_dur - (N - 1) * fade_duration = total_duration
@@ -70,13 +73,23 @@ class VideoRenderer:
         audio_index = num_images
         cmd.extend(["-i", audio_safe_path])
 
-        # 3. 로고 인풋 등록 (지정된 경우)
-        logo_index = num_images + 1 if has_logo else None
+        # 3. 추가 오버레이 인풋 등록 (로고: 좌측 상단 / 제목: 우측 상단)
+        current_input_index = num_images + 1
+        logo_index = None
         if has_logo:
             safe_logo_path = str(Path(logo_path).resolve()).replace("\\", "/")
             cmd.extend(["-i", safe_logo_path])
+            logo_index = current_input_index
+            current_input_index += 1
 
-        # 4. Filter Complex 생성 (씬 간 크로스페이드 + 시작/종료 페이드 + 좌측 상단 로고 합성)
+        title_index = None
+        if has_title:
+            safe_title_path = str(Path(title_path).resolve()).replace("\\", "/")
+            cmd.extend(["-i", safe_title_path])
+            title_index = current_input_index
+            current_input_index += 1
+
+        # 4. Filter Complex 생성 (씬 간 크로스페이드 + 시작/종료 페이드 + 좌측 상단 로고 + 우측 상단 제목)
         filter_parts = []
         last_label = "0:v"
         for i in range(1, num_images):
@@ -90,17 +103,28 @@ class VideoRenderer:
 
         # 영상 시작 페이드 인 및 종료 페이드 아웃
         fade_out_st = max(0.0, total_duration - fade_duration)
-        if has_logo:
+        if has_logo or has_title:
             filter_parts.append(
                 f"[v_crossfaded]fade=t=in:st=0:d={fade_duration:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_duration:.3f}[v_fade]"
             )
+            current_v = "v_fade"
+
             # 좌측 상단 로고 오버레이 (50x50px 규격, 좌측 35px / 상단 35px 여백)
-            filter_parts.append(
-                f"[{logo_index}:v]scale=w='min(50,iw)':h=-1[logo_scaled]"
-            )
-            filter_parts.append(
-                f"[v_fade][logo_scaled]overlay=35:35[vout]"
-            )
+            if has_logo:
+                filter_parts.append(
+                    f"[{logo_index}:v]scale=w='min(50,iw)':h=-1[logo_scaled]"
+                )
+                next_v = "v_with_logo" if has_title else "vout"
+                filter_parts.append(
+                    f"[{current_v}][logo_scaled]overlay=35:35[{next_v}]"
+                )
+                current_v = next_v
+
+            # 우측 상단 제목 배지 오버레이 (우측 35px / 상단 35px 여백)
+            if has_title:
+                filter_parts.append(
+                    f"[{current_v}][{title_index}:v]overlay=W-w-35:35[vout]"
+                )
         else:
             filter_parts.append(
                 f"[v_crossfaded]fade=t=in:st=0:d={fade_duration:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_duration:.3f}[vout]"
@@ -157,7 +181,7 @@ class VideoRenderer:
             # 실패 시 안전하게 concat fallback 시도
             if progress_callback:
                 progress_callback(50, "페이드 필터 오류로 기본 슬라이드 모드로 안전 전환...")
-            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, progress_callback)
+            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, title_path, progress_callback)
 
         if not output_mp4.exists() or output_mp4.stat().st_size == 0:
             raise RuntimeError(f"영상 렌더링 실패: 최종 파일이 생성되지 않았습니다 ({output_mp4.name})")
@@ -174,9 +198,10 @@ class VideoRenderer:
         output_mp4: Path,
         total_duration: float,
         logo_path: Optional[Path] = None,
+        title_path: Optional[Path] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Path:
-        """기본 슬라이드쇼 concat fallback 엔진 (로고 오버레이 지원)"""
+        """기본 슬라이드쇼 concat fallback 엔진 (로고 및 제목 오버레이 지원)"""
         num_images = len(image_paths)
         time_per_image = total_duration / num_images
 
@@ -190,6 +215,7 @@ class VideoRenderer:
             f.write(f"file '{last_path}'\n")
 
         has_logo = bool(logo_path and Path(logo_path).exists())
+        has_title = bool(title_path and Path(title_path).exists())
 
         cmd = [
             self.ffmpeg_path,
@@ -200,11 +226,34 @@ class VideoRenderer:
             "-i", str(audio_path),
         ]
 
+        curr_idx = 2
+        logo_idx = None
         if has_logo:
             safe_logo = str(Path(logo_path).resolve()).replace("\\", "/")
+            cmd.extend(["-i", safe_logo])
+            logo_idx = curr_idx
+            curr_idx += 1
+
+        title_idx = None
+        if has_title:
+            safe_title = str(Path(title_path).resolve()).replace("\\", "/")
+            cmd.extend(["-i", safe_title])
+            title_idx = curr_idx
+            curr_idx += 1
+
+        if has_logo or has_title:
+            filter_parts = []
+            current_v = "0:v"
+            if has_logo:
+                filter_parts.append(f"[{logo_idx}:v]scale=w='min(50,iw)':h=-1[logo]")
+                next_v = "v_tmp" if has_title else "vout"
+                filter_parts.append(f"[{current_v}][logo]overlay=35:35[{next_v}]")
+                current_v = next_v
+            if has_title:
+                filter_parts.append(f"[{current_v}][{title_idx}:v]overlay=W-w-35:35[vout]")
+
             cmd.extend([
-                "-i", safe_logo,
-                "-filter_complex", "[2:v]scale=w='min(50,iw)':h=-1[logo];[0:v][logo]overlay=35:35[vout]",
+                "-filter_complex", ";".join(filter_parts),
                 "-map", "[vout]",
                 "-map", "1:a"
             ])
