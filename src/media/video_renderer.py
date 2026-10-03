@@ -37,7 +37,7 @@ class VideoRenderer:
         9장의 씬 이미지를 BGM 길이에 맞춰 균등 배분하고,
         씬 간 부드러운 크로스페이드(Fade In / Fade Out) 전환 효과 및
         영상 시작/종료 페이드 효과를 적용하여 1080p FHD MP4 비디오로 렌더링합니다.
-        외부 로고 이미지가 지정된 경우 영상 우측 상단(Top-Right)에 오버레이 합성합니다.
+        외부 로고 이미지가 지정된 경우 영상 좌측 상단(Top-Left)에 오버레이 합성합니다.
         """
         output_mp4.parent.mkdir(parents=True, exist_ok=True)
         if total_duration is None or total_duration <= 0:
@@ -76,7 +76,7 @@ class VideoRenderer:
             safe_logo_path = str(Path(logo_path).resolve()).replace("\\", "/")
             cmd.extend(["-i", safe_logo_path])
 
-        # 4. Filter Complex 생성 (씬 간 크로스페이드 + 시작/종료 페이드 + 우측 상단 로고 합성)
+        # 4. Filter Complex 생성 (씬 간 크로스페이드 + 시작/종료 페이드 + 좌측 상단 로고 합성)
         filter_parts = []
         last_label = "0:v"
         for i in range(1, num_images):
@@ -94,12 +94,12 @@ class VideoRenderer:
             filter_parts.append(
                 f"[v_crossfaded]fade=t=in:st=0:d={fade_duration:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_duration:.3f}[v_fade]"
             )
-            # 우측 상단 로고 오버레이 (가로 최대 240px 비율 유지, 우측 35px / 상단 35px 여백)
+            # 좌측 상단 로고 오버레이 (가로 최대 240px 비율 유지, 좌측 35px / 상단 35px 여백)
             filter_parts.append(
                 f"[{logo_index}:v]scale=w='min(240,iw)':h=-1[logo_scaled]"
             )
             filter_parts.append(
-                f"[v_fade][logo_scaled]overlay=W-w-35:35[vout]"
+                f"[v_fade][logo_scaled]overlay=35:35[vout]"
             )
         else:
             filter_parts.append(
@@ -204,7 +204,7 @@ class VideoRenderer:
             safe_logo = str(Path(logo_path).resolve()).replace("\\", "/")
             cmd.extend([
                 "-i", safe_logo,
-                "-filter_complex", "[2:v]scale=w='min(240,iw)':h=-1[logo];[0:v][logo]overlay=W-w-35:35[vout]",
+                "-filter_complex", "[2:v]scale=w='min(240,iw)':h=-1[logo];[0:v][logo]overlay=35:35[vout]",
                 "-map", "[vout]",
                 "-map", "1:a"
             ])

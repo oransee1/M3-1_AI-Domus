@@ -446,13 +446,13 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.lyrics_box)
         self.lyrics_box.setVisible(False)
 
-        # 로고 이미지 선택 (영상 우측 상단 오버레이)
+        # 로고 이미지 선택 (영상 좌측 상단 오버레이)
         logo_row = QHBoxLayout()
         logo_label = QLabel("로고 이미지:")
         logo_row.addWidget(logo_label)
 
         self.logo_path_input = QLineEdit()
-        self.logo_path_input.setPlaceholderText("선택 안 함 (우측 상단 투명 로고 PNG/JPG...)")
+        self.logo_path_input.setPlaceholderText("선택 안 함 (좌측 상단 투명 로고 PNG/JPG...)")
         self.logo_path_input.setReadOnly(True)
         logo_row.addWidget(self.logo_path_input)
 
@@ -595,7 +595,7 @@ class MainWindow(QMainWindow):
     def _select_logo_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "영상 우측 상단에 반영할 로고 이미지 선택",
+            "영상 좌측 상단에 반영할 로고 이미지 선택",
             "",
             "이미지 파일 (*.png *.jpg *.jpeg *.webp *.bmp)"
         )
