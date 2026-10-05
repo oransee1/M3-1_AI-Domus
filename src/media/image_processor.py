@@ -1,30 +1,98 @@
+import numpy as np
 from pathlib import Path
 from typing import List
 from PIL import Image, ImageFilter
 
 class ImageProcessor:
     @staticmethod
+    def _detect_grid_spans(prof_mean: np.ndarray, prof_std: np.ndarray, length: int) -> List[tuple]:
+        """
+        스토리보드 3x3 이미지의 외곽 테두리(Border) 및 내부 격자 분할선(Gutter)을 지능적으로 감지하여
+        블랙바 및 불필요한 테두리가 완전히 제거된 순수 콘텐츠 3구간의 [start, end) 좌표를 반환합니다.
+        """
+        center_med = float(np.median(prof_mean[int(length * 0.2):int(length * 0.8)]))
+        thresh_dark = min(45.0, center_med * 0.45)
+
+        def is_gutter(idx: int) -> bool:
+            return bool(prof_mean[idx] <= thresh_dark or (prof_std[idx] <= 5.0 and prof_mean[idx] <= 50.0))
+
+        # 외곽 시작 테두리 (전체 길이의 최대 12%까지 검색)
+        s0 = 0
+        while s0 < length * 0.12 and is_gutter(s0):
+            s0 += 1
+
+        # 외곽 끝 테두리 (전체 길이의 88% 이후부터 역방향 검색)
+        s3 = length - 1
+        while s3 > length * 0.88 and is_gutter(s3):
+            s3 -= 1
+        s3 += 1
+
+        # 1차 내부 분할선 (1/3 지점 부근: 28% ~ 38% 검색)
+        win1_s, win1_e = int(length * 0.28), int(length * 0.38)
+        v1 = win1_s + int(np.argmin(prof_mean[win1_s:win1_e]))
+        if is_gutter(v1):
+            d1_left = v1
+            while d1_left > win1_s and is_gutter(d1_left - 1):
+                d1_left -= 1
+            d1_right = v1
+            while d1_right < win1_e and is_gutter(d1_right + 1):
+                d1_right += 1
+        else:
+            d1_left = int(length / 3)
+            d1_right = d1_left
+
+        # 2차 내부 분할선 (2/3 지점 부근: 62% ~ 72% 검색)
+        win2_s, win2_e = int(length * 0.62), int(length * 0.72)
+        v2 = win2_s + int(np.argmin(prof_mean[win2_s:win2_e]))
+        if is_gutter(v2):
+            d2_left = v2
+            while d2_left > win2_s and is_gutter(d2_left - 1):
+                d2_left -= 1
+            d2_right = v2
+            while d2_right < win2_e and is_gutter(d2_right + 1):
+                d2_right += 1
+        else:
+            d2_left = int(length * 2 / 3)
+            d2_right = d2_left
+
+        # 안전 검증: 각 셀 크기가 최소 20% 이상 확보되지 않으면 기본 3등분으로 안전 폴백
+        min_cell = int(length * 0.2)
+        if (d1_left - s0 < min_cell) or (d2_left - (d1_right + 1) < min_cell) or (s3 - (d2_right + 1) < min_cell):
+            tile = length // 3
+            return [(0, tile), (tile, tile * 2), (tile * 2, length)]
+
+        return [(s0, d1_left), (d1_right + 1, d2_left), (d2_right + 1, s3)]
+
+    @staticmethod
     def split_3x3_grid(image_path: Path, output_dir: Path) -> List[Path]:
         """
-        3x3 스토리보드 원본 이미지를 9개의 고화질 씬 이미지로 자동 슬라이싱합니다.
+        3x3 스토리보드 원본 이미지를 9개의 고화질 씬 이미지로 정밀 슬라이싱합니다.
+        외곽 테두리 및 격자 구분선을 지능적으로 감지하여 검은 여백 없는 순수 씬만 크롭합니다.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
         img = Image.open(image_path).convert("RGB")
         width, height = img.size
 
-        tile_w = width // 3
-        tile_h = height // 3
+        try:
+            arr = np.array(img)
+            col_mean = arr.mean(axis=(0, 2))
+            col_std = arr.std(axis=(0, 2))
+            row_mean = arr.mean(axis=(1, 2))
+            row_std = arr.std(axis=(1, 2))
+
+            col_spans = ImageProcessor._detect_grid_spans(col_mean, col_std, width)
+            row_spans = ImageProcessor._detect_grid_spans(row_mean, row_std, height)
+        except Exception:
+            tile_w = width // 3
+            tile_h = height // 3
+            col_spans = [(0, tile_w), (tile_w, tile_w * 2), (tile_w * 2, width)]
+            row_spans = [(0, tile_h), (tile_h, tile_h * 2), (tile_h * 2, height)]
 
         scene_paths = []
         count = 1
-        for row in range(3):
-            for col in range(3):
-                left = col * tile_w
-                top = row * tile_h
-                right = left + tile_w if col < 2 else width
-                bottom = top + tile_h if row < 2 else height
-
-                cropped = img.crop((left, top, right, bottom))
+        for r_start, r_end in row_spans:
+            for c_start, c_end in col_spans:
+                cropped = img.crop((c_start, r_start, c_end, r_end))
                 scene_file = output_dir / f"scene_{count:02d}.png"
                 cropped.save(scene_file, "PNG", quality=95)
                 scene_paths.append(scene_file)
@@ -36,8 +104,9 @@ class ImageProcessor:
     def prepare_16_9_frames(scene_paths: List[Path], target_dir: Path, width: int = 1920, height: int = 1080) -> List[Path]:
         """
         9장의 씬 이미지를 1920x1080 (16:9 FHD) 초고화질 규격으로 변환합니다.
-        16:9 와이드스크린 씬은 화면 전체를 꽉 채우는 풀스크린 시네마틱 프레이밍과
-        고해상도 언샤프 마스크(Unsharp Mask) 필터를 적용하여 칼같은 선명도와 디테일을 구현합니다.
+        모든 이미지가 화면 전체를 100% 꽉 채우는 풀스크린 시네마틱 프레이밍(Scale-to-Fill)과
+        중앙 정렬을 통해 동일한 위치에서 일관되게 렌더링되도록 보장합니다.
+        초고해상도 언샤프 마스크(Unsharp Mask) 필터를 적용하여 칼같은 선명도와 디테일을 구현합니다.
         """
         target_dir.mkdir(parents=True, exist_ok=True)
         fhd_paths = []
@@ -45,36 +114,18 @@ class ImageProcessor:
         for idx, sp in enumerate(scene_paths, start=1):
             scene_img = Image.open(sp).convert("RGB")
             sw, sh = scene_img.size
-            aspect_ratio = sw / sh
 
-            # 1. 16:9 와이드스크린 씬 (1.5 ~ 2.1 비율):
-            # 블러 여백 없이 1920x1080 전체 화면을 선명하게 채우는 풀스크린 시네마틱 구도
-            if 1.5 <= aspect_ratio <= 2.1:
-                scale = max(width / sw, height / sh)
-                nw = int(round(sw * scale))
-                nh = int(round(sh * scale))
-                resized = scene_img.resize((nw, nh), Image.Resampling.LANCZOS)
-                left = (nw - width) // 2
-                top = (nh - height) // 2
-                frame = resized.crop((left, top, left + width, top + height))
-            else:
-                # 정사각/세로형 등 특수 비율인 경우: 배경 블러 확장 + 전면 중앙 배치
-                bg_scale = max(width / sw, height / sh)
-                bg_size = (int(sw * bg_scale), int(sh * bg_scale))
-                bg_img = scene_img.resize(bg_size, Image.Resampling.LANCZOS)
-                bg_left = (bg_img.width - width) // 2
-                bg_top = (bg_img.height - height) // 2
-                frame = bg_img.crop((bg_left, bg_top, bg_left + width, bg_top + height)).filter(ImageFilter.GaussianBlur(radius=25))
+            # 모든 씬 이미지를 1920x1080 전체 화면에 가득 채우는 풀스크린 시네마틱 구도 (Scale-to-Fill)
+            # 검은 여백(블랙바)이나 위치 쏠림 없이 모든 씬이 화면 중앙 동일 위치에서 꽉 찬 16:9 화면으로 출력
+            scale = max(width / sw, height / sh)
+            nw = int(round(sw * scale))
+            nh = int(round(sh * scale))
+            resized = scene_img.resize((nw, nh), Image.Resampling.LANCZOS)
+            left = (nw - width) // 2
+            top = (nh - height) // 2
+            frame = resized.crop((left, top, left + width, top + height))
 
-                fg_scale = min(width / sw, height / sh)
-                fg_w = int(sw * fg_scale)
-                fg_h = int(sh * fg_scale)
-                fg_resized = scene_img.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
-                pos_x = (width - fg_w) // 2
-                pos_y = (height - fg_h) // 2
-                frame.paste(fg_resized, (pos_x, pos_y))
-
-            # 2. 초고화질 선명도(Sharpness) 및 질감 디테일 보정:
+            # 초고화질 선명도(Sharpness) 및 질감 디테일 보정:
             # 업스케일링 과정에서의 미세 블러를 제거하고 고해상도 특유의 선명한 질감 연출
             frame = frame.filter(ImageFilter.UnsharpMask(radius=1.2, percent=125, threshold=2))
 
@@ -83,6 +134,7 @@ class ImageProcessor:
             fhd_paths.append(out_path)
 
         return fhd_paths
+
 
     @staticmethod
     def create_thumbnail(img: Image.Image, max_size: tuple = (320, 320)) -> Image.Image:
