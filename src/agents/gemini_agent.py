@@ -92,6 +92,13 @@ class GeminiPromptAgent:
             "vocal_style": "vocoder electronic vocal, autotuned electro pop, hypnotic, futuristic robotic chant",
             "description": "energetic electronic club groove with driving synthesizer basslines, punchy digital beats, and futuristic cyber atmosphere"
         },
+        "K-Pop": {
+            "primary_tags": "k-pop, catchy pop, energetic dance beat, synth pop, modern korean pop, groovy bassline, upbeat idol anthem, bright melody",
+            "instruments": "modern dance drum kit, punchy synth brass, groovy bass guitar, shimmering acoustic and electric guitar, layered hook synths, dramatic breakdown pads",
+            "tempo": "118-128 BPM",
+            "vocal_style": "clear melodic korean vocal, catchy hook, dynamic vocal harmonies, charismatic idol performance, rhythmic delivery",
+            "description": "infectious modern K-pop dance track with catchy melodic hooks, punchy upbeat groove, and polished idol production"
+        },
     }
 
     def get_all_free_models(self) -> list:
@@ -374,7 +381,10 @@ class GeminiPromptAgent:
         """Gemini 서버 일시 부하(503) 시에도 제작이 중단되지 않도록 하는 지능형 백업 플래너 (장르별 맞춤 악기 완벽 적용)"""
         is_rock = "rock" in genre.lower()
         is_electro = any(w in genre.lower() for w in ["electro", "electronic", "edm", "synthwave"])
-        if is_rock:
+        is_kpop = any(w in genre.lower() for w in ["k-pop", "kpop", "korean pop"])
+        if is_kpop:
+            title = f"K-Pop - Starlight Dance"
+        elif is_rock:
             title = f"{genre.split('/')[0].strip()} - Electric Anthem"
         elif is_electro:
             title = f"{genre.split('/')[0].strip()} - Cyber Pulse"
@@ -396,7 +406,13 @@ class GeminiPromptAgent:
         genre_desc = genre_info["description"]
 
         if is_instrumental:
-            if is_rock or is_electro:
+            if is_kpop:
+                suno_prompt = (
+                    f"Upbeat energetic {genre_desc}, featuring {inst_desc}. "
+                    f"Modern K-pop dance atmosphere, instrumental, catchy hooks, punchy groove, no vocals. {tempo_desc}."
+                )
+                suno_style = f"{primary_tags}, instrumental, dance pop"
+            elif is_rock or is_electro:
                 genre_type = "electronic club" if is_electro else "rock"
                 anthem_tag = "cyber groove" if is_electro else "driving anthem"
                 suno_prompt = (
@@ -414,7 +430,24 @@ class GeminiPromptAgent:
             if custom_lyrics:
                 suno_prompt = custom_lyrics
             else:
-                if is_electro:
+                if is_kpop:
+                    suno_prompt = (
+                        f"[Verse 1]\n"
+                        f"눈부신 조명 아래 시작되는 꿈\n"
+                        f"심장을 두드리는 비트와 너의 눈빛\n"
+                        f"반짝이는 이 순간을 놓치지 마\n"
+                        f"우리만의 리듬 속에 빠져들어\n\n"
+                        f"[Chorus]\n"
+                        f"손을 뻗어 하늘 높이 빛나는 별처럼\n"
+                        f"벅차오르는 멜로디에 맞춰 춤을 춰\n"
+                        f"멈추지 않는 이 열정 너와 나 함께라면\n"
+                        f"영원히 타오를 이 순간 K-Pop starlight!\n\n"
+                        f"[Outro]\n"
+                        f"빛나는 우리들의 밤, forever shine!"
+                    )
+                    vocal_style = genre_info["vocal_style"]
+                    suno_style = f"{primary_tags}, {vocal_style}, catchy dance"
+                elif is_electro:
                     suno_prompt = (
                         f"[Verse 1]\n"
                         f"Signals pulse through the neon wires\n"

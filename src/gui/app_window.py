@@ -443,7 +443,8 @@ class MainWindow(QMainWindow):
             "Smooth Jazz",
             "Acoustic Guitar",
             "Glam Rock",
-            "Electro"
+            "Electro",
+            "K-Pop"
         ])
         genre_row.addWidget(self.genre_combo)
         left_layout.addLayout(genre_row)
