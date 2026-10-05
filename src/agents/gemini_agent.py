@@ -86,19 +86,19 @@ class GeminiPromptAgent:
             "with 9 distinct sequential cinematic scenes. Each individual scene frame MUST be in 16:9 widescreen ratio, "
             "and the entire storyboard image MUST be in crisp Ultra-HD 4K resolution (3840x2160).\n\n"
             "CRITICAL VISUAL RULES FOR IMAGE GENERATION (MANDATORY):\n"
-            "- [REAL PHOTOGRAPHY ONLY]: The style MUST be 100% authentic, photorealistic real-life photography shot on a professional 35mm DSLR camera (f/1.8, natural lighting, realistic skin textures, authentic depth of field). "
+            "- [REAL PHOTOGRAPHY ONLY]: The style MUST be 100% authentic, photorealistic real-life photography shot on a professional 35mm DSLR camera (f/1.8, natural lighting, realistic textures, authentic depth of field). "
             "NEVER generate paintings, illustrations, drawings, anime, cartoons, Ghibli, sketches, or digital art. "
             "Always include negative constraints: 'real photograph, authentic photography, absolutely no illustration, no anime, no painting, no drawing, no cartoon'.\n"
-            "- [KOREAN CHARACTERS ONLY]: Whenever people, characters, walkers, or figures appear in any scene, they MUST be Korean "
-            "(explicitly specify: 'a realistic Korean woman', 'a Korean man', 'a young Korean couple', or 'a Korean person' with natural East Asian Korean facial features, modern Korean casual fashion, authentic Korean aesthetic). "
-            "Never depict western, anime, or fantasy characters.\n"
-            "- [CONSISTENCY]: All 9 scenes must share identical photography style, seamless color grading, and character/scenery consistency.\n\n"
+            "- [STRICTLY NO PEOPLE / SCENERY & NATURE ONLY]: NEVER include any people, persons, human figures, characters, faces, walkers, crowds, or silhouettes in any scene. "
+            "Focus 100% on pure scenic beauty: breathtaking natural landscapes, peaceful outdoor walking paths covered in fallen autumn leaves, sunbeams through tree branches, serene empty park benches, cozy indoor cafe tables with steaming coffee, rainy window views, glowing evening lanterns. "
+            "Every scene must be a tranquil, unpopulated environment. Always explicitly include negative constraints: 'no people, no humans, no person, no woman, no man, no silhouette, no crowd'.\n"
+            "- [CONSISTENCY]: All 9 scenes must share identical photography style, seamless color grading, and scenery consistency.\n\n"
             "Respond ONLY with a valid JSON object matching this schema:\n"
             "{\n"
             '  "title": "English or Korean poetic title",\n'
             f'  "suno_prompt": "{suno_prompt_rule}",\n'
             f'  "suno_style": "{suno_style_rule}",\n'
-            '  "image_prompt": "Prompt for generating a 3x3 grid (9 distinct sequential scenes) storyboard in 4K resolution (3840x2160). Must begin with \'3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, ultra-detailed authentic photography...\'. Describe the realistic photographic environment, golden hour natural lighting, authentic real-life details matching the mood. If human figures are present, explicitly specify they are Korean (e.g. \'natural realistic Korean person walking in the scene...\'). Conclude with: \'shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, real photograph, absolutely no illustration, no anime, no painting, no drawing, no cartoon.\'"\n'
+            '  "image_prompt": "Prompt for generating a 3x3 grid (9 distinct sequential scenes) storyboard in 4K resolution (3840x2160). Must begin with \'3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, ultra-detailed authentic photography...\'. Describe the realistic photographic scenery, golden hour natural lighting, authentic real-life scenic/nature/landscape details matching the mood. MUST NOT have any people or human figures. Conclude with: \'shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, real photograph, scenic nature only, no people, no humans, no person, no woman, no man, no silhouette, absolutely no illustration, no anime, no painting, no drawing, no cartoon.\'"\n'
             "}"
         )
 
@@ -110,7 +110,7 @@ class GeminiPromptAgent:
             f"- Mode: {'Instrumental (Pure BGM, No Vocals)' if is_instrumental else 'Vocal Song (With Lyrics)'}{lyrics_info}\n\n"
             f"Mandatory Visual Guidelines:\n"
             f"1. Photography Style: 100% Real authentic photograph (NO illustration, NO anime, NO digital painting, NO cartoon).\n"
-            f"2. Human Characters: If any people appear, they MUST be Korean (natural Korean facial features and aesthetic).\n\n"
+            f"2. NO People / Human Figures: Strictly scenery, nature, landscape, or environment ONLY (NO humans, NO people, NO characters, NO silhouettes).\n\n"
             f"Generate the cohesive multimedia creative plan in JSON format."
         )
 
@@ -143,8 +143,8 @@ class GeminiPromptAgent:
                 result = json.loads(raw_text.strip())
                 if result.get("title") and result.get("suno_prompt") and result.get("image_prompt"):
                     result["engine"] = model_name
-                    # 실사 사진 및 한국인 등장 보장 후처리 가드
-                    result["image_prompt"] = self._enforce_photo_and_korean(result["image_prompt"])
+                    # 실사 사진 및 등장 인물 배제(풍경/자연 전용) 보장 후처리 가드
+                    result["image_prompt"] = self._enforce_photo_and_no_people(result["image_prompt"])
                     if log_callback:
                         log_callback(f"✅ [Gemini 엔진 가동 성공] 무료 엔진 '{model_name}'으로 기획 완료!")
                     return result
@@ -170,10 +170,10 @@ class GeminiPromptAgent:
         return self._smart_fallback_plan(mood, genre, is_instrumental, custom_lyrics)
 
     @staticmethod
-    def _enforce_photo_and_korean(prompt: str) -> str:
+    def _enforce_photo_and_no_people(prompt: str) -> str:
         """
-        나노 바나나 프롬프트가 반드시 '실제 사진(Real Photography)' 및 '한국인(Korean)'으로 생성되도록
-        그림/일러스트 키워드를 정제하고 필수 실사/한국인 제약조건을 강제 보강합니다.
+        나노 바나나 프롬프트가 반드시 '실제 사진(Real Photography)' 및 '등장 인물 없음(No People/Scenery Only)'으로
+        생성되도록 그림/일러스트 키워드와 인물 관련 묘사를 완벽히 정제하고 풍경/무인물 제약조건을 강제 보강합니다.
         """
         cleaned = prompt
         # 1. 긍정적 맥락에서 쓰인 그림/일러스트 관련 키워드만 실사 사진으로 치환 (부정어 뒤는 보존)
@@ -184,21 +184,14 @@ class GeminiPromptAgent:
         ]:
             cleaned = re.sub(rf"(?<!no\s)(?<!not\s)(?<!without\s)\b{re.escape(art_word)}\b", "authentic real photograph", cleaned, flags=re.IGNORECASE)
 
-        # 2. 인물이 등장하는데 Korean 키워드가 없는 경우 한국인 키워드 강제 주입
-        lower_prompt = cleaned.lower()
-        has_person = any(w in lower_prompt for w in ["person", "people", "woman", "man", "girl", "boy", "couple", "walker", "figure", "character"])
-        if has_person and "korean" not in lower_prompt:
-            cleaned = re.sub(r"\b(peaceful|lonely|young|happy|walking)?\s*(figure|person|character)\b", "realistic Korean person", cleaned, flags=re.IGNORECASE)
-            cleaned = re.sub(r"\b(young|beautiful)?\s*woman\b", "realistic Korean woman", cleaned, flags=re.IGNORECASE)
-            cleaned = re.sub(r"\b(young|handsome)?\s*man\b", "realistic Korean man", cleaned, flags=re.IGNORECASE)
-            cleaned = re.sub(r"\b(young)?\s*girl\b", "realistic Korean woman", cleaned, flags=re.IGNORECASE)
-            cleaned = re.sub(r"\bcouple\b", "young Korean couple", cleaned, flags=re.IGNORECASE)
-            if "korean" not in cleaned.lower():
-                cleaned += ", featuring realistic Korean person with natural Korean facial features"
+        # 2. 긍정적 맥락의 인물/인체 관련 묘사 정제 (부정어 뒤는 보존, 사람 묘사를 평화로운 풍경/자연 요소로 순화)
+        cleaned = re.sub(r"(?<!no\s)(?<!not\s)(?<!without\s)\b(a\s+)?(realistic\s+)?(korean\s+)?(woman|man|girl|boy|person|figure)\s+(walking|sitting|standing|looking|taking a walk)\b", "peaceful scenic landscape", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"(?<!no\s)(?<!not\s)(?<!without\s)\b(a\s+)?(realistic\s+)?(korean\s+)?(woman|man|girl|boy|person|figure|character|couple|people)\b", "peaceful landscape", cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r"(?<!no\s)(?<!not\s)(?<!without\s)\b(her|his)\s+(hair|hands|eyes|face|fashion|coat|scarf)\b", "warm natural sunlight", cleaned, flags=re.IGNORECASE)
 
-        # 3. 실사 사진 및 네거티브 제약(노 일러스트/노 애니메이션) 보강
-        if "no illustration" not in cleaned.lower():
-            cleaned += ", real authentic photograph, shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
+        # 3. 'no people' 및 실사 네거티브 제약 강제 보강
+        if "no people" not in cleaned.lower():
+            cleaned += ", tranquil scenery, pure nature, empty peaceful environment, no people, no humans, no person, no woman, no man, no silhouette, no crowd, real authentic photograph, shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
 
         return cleaned
 
@@ -235,10 +228,10 @@ class GeminiPromptAgent:
         
         image_prompt = (
             f"3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, ultra-detailed authentic photography. "
-            f"Cinematic realistic photograph of {mood}. Warm natural lighting, authentic real-world scenery, highly consistent photography and atmosphere across all 9 panels. "
-            f"If people or figures appear, realistic Korean person with natural authentic features and Korean aesthetic. "
-            f"Shot on 35mm DSLR camera, f/1.8, award-winning real photograph, 4K UHD, photorealistic textures, "
-            f"real photo, absolutely no illustration, no anime, no drawing, no painting, no cartoon."
+            f"Cinematic realistic landscape photograph of {mood}. Breathtaking pure nature and outdoor scenery, warm golden hour sunlight, colorful autumn foliage, empty park paths, "
+            f"quiet wooden bench, sunbeams through trees, highly consistent photography and atmosphere across all 9 panels. "
+            f"Shot on 35mm DSLR camera, f/2.8, award-winning real photograph, 4K UHD, photorealistic textures, "
+            f"scenic landscape only, no people, no humans, no person, no woman, no man, no silhouette, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
         )
         
         return {
