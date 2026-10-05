@@ -46,13 +46,13 @@ class ApiframeClient:
     def create_image_task(
         self,
         prompt: str,
-        model: str = "nano-banana-2-lite",
+        model: str = "nano-banana-2",
         aspect_ratio: str = "16:9",
         resolution: str = "4K"
     ) -> str:
         """
-        Nano Banana 2 Lite 이미지 생성을 요청하고 jobId를 반환합니다.
-        각 씬 16:9 비율 9장 및 전체 4K 고해상도 생성을 위해 nanoBananaParams를 적용합니다.
+        Nano Banana 2 초고화질 4K 이미지 생성을 요청하고 jobId를 반환합니다.
+        각 씬 16:9 비율 9장 및 전체 4K(3840x2160) 고해상도 생성을 위해 nanoBananaParams를 적용합니다.
         """
         if not self.nano_key:
             raise ValueError("Apiframe Nano Banana API 키가 설정되지 않았습니다.")
@@ -73,6 +73,12 @@ class ApiframeClient:
         }
 
         resp = requests.post(url, json=payload, headers=headers, timeout=30)
+        # 만약 nano-banana-2 모델 호출 시 에러가 발생할 경우 nano-banana-2-lite로 fallback 시도
+        if resp.status_code not in (200, 201, 202) and model != "nano-banana-2-lite":
+            fallback_payload = dict(payload)
+            fallback_payload["model"] = "nano-banana-2-lite"
+            resp = requests.post(url, json=fallback_payload, headers=headers, timeout=30)
+
         if resp.status_code not in (200, 201, 202):
             raise RuntimeError(f"이미지 작업 생성 실패 (HTTP {resp.status_code}): {resp.text}")
 

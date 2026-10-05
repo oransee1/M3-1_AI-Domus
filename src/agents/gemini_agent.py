@@ -82,7 +82,7 @@ class GeminiPromptAgent:
             "(specializing in healing, new age, lo-fi, sleep, and meditation music like 'Dancing with Angels' or 'Gentle Mind').\n"
             "Your mission is to take the user's brief concept and produce perfectly aligned prompts for:\n"
             "1. Suno AI (Music generation): optimized English music description and genre/style tags (or structured lyrics if vocal mode).\n"
-            "2. Nano Banana 2 Lite (Image generation): a prompt specifically requesting a '3x3 grid storyboard' "
+            "2. Nano Banana 2 4K (Image generation): a prompt specifically requesting a '3x3 grid storyboard' "
             "with 9 distinct sequential cinematic scenes. Each individual scene frame MUST be in 16:9 widescreen ratio, "
             "and the entire storyboard image MUST be in crisp Ultra-HD 4K resolution (3840x2160).\n\n"
             "CRITICAL VISUAL RULES FOR IMAGE GENERATION (MANDATORY):\n"

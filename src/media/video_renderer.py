@@ -143,6 +143,9 @@ class VideoRenderer:
             "-map", "[vout]",
             "-map", "[aout]",
             "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "17",
+            "-profile:v", "high",
             "-pix_fmt", "yuv420p",
             "-r", "30",
             "-c:a", "aac",
@@ -265,6 +268,9 @@ class VideoRenderer:
 
         cmd.extend([
             "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "17",
+            "-profile:v", "high",
             "-pix_fmt", "yuv420p",
             "-r", "30",
             "-c:a", "aac",

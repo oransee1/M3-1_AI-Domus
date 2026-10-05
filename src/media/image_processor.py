@@ -35,9 +35,9 @@ class ImageProcessor:
     @staticmethod
     def prepare_16_9_frames(scene_paths: List[Path], target_dir: Path, width: int = 1920, height: int = 1080) -> List[Path]:
         """
-        9장의 씬 이미지를 1920x1080 (16:9 FHD) 규격으로 변환합니다.
-        배경은 원본을 블러 확장하여 채우고 중앙에 선명한 씬을 배치하여
-        유튜브 힐링 음악 채널 특유의 고급스러운 시각 효과를 연출합니다.
+        9장의 씬 이미지를 1920x1080 (16:9 FHD) 초고화질 규격으로 변환합니다.
+        16:9 와이드스크린 씬은 화면 전체를 꽉 채우는 풀스크린 시네마틱 프레이밍과
+        고해상도 언샤프 마스크(Unsharp Mask) 필터를 적용하여 칼같은 선명도와 디테일을 구현합니다.
         """
         target_dir.mkdir(parents=True, exist_ok=True)
         fhd_paths = []
@@ -45,31 +45,41 @@ class ImageProcessor:
         for idx, sp in enumerate(scene_paths, start=1):
             scene_img = Image.open(sp).convert("RGB")
             sw, sh = scene_img.size
+            aspect_ratio = sw / sh
 
-            # 1. 배경 생성: 화면 전체를 채우도록 리사이즈 후 가우시안 블러
-            bg_scale = max(width / sw, height / sh)
-            bg_size = (int(sw * bg_scale), int(sh * bg_scale))
-            bg_img = scene_img.resize(bg_size, Image.Resampling.LANCZOS)
-            
-            # 중앙 크롭하여 1920x1080
-            bg_left = (bg_img.width - width) // 2
-            bg_top = (bg_img.height - height) // 2
-            bg_cropped = bg_img.crop((bg_left, bg_top, bg_left + width, bg_top + height))
-            blurred_bg = bg_cropped.filter(ImageFilter.GaussianBlur(radius=25))
+            # 1. 16:9 와이드스크린 씬 (1.5 ~ 2.1 비율):
+            # 블러 여백 없이 1920x1080 전체 화면을 선명하게 채우는 풀스크린 시네마틱 구도
+            if 1.5 <= aspect_ratio <= 2.1:
+                scale = max(width / sw, height / sh)
+                nw = int(round(sw * scale))
+                nh = int(round(sh * scale))
+                resized = scene_img.resize((nw, nh), Image.Resampling.LANCZOS)
+                left = (nw - width) // 2
+                top = (nh - height) // 2
+                frame = resized.crop((left, top, left + width, top + height))
+            else:
+                # 정사각/세로형 등 특수 비율인 경우: 배경 블러 확장 + 전면 중앙 배치
+                bg_scale = max(width / sw, height / sh)
+                bg_size = (int(sw * bg_scale), int(sh * bg_scale))
+                bg_img = scene_img.resize(bg_size, Image.Resampling.LANCZOS)
+                bg_left = (bg_img.width - width) // 2
+                bg_top = (bg_img.height - height) // 2
+                frame = bg_img.crop((bg_left, bg_top, bg_left + width, bg_top + height)).filter(ImageFilter.GaussianBlur(radius=25))
 
-            # 2. 전면 이미지: 높이에 맞춰 비율 유지 리사이즈 (1080 높이에 맞춤)
-            fg_scale = height / sh
-            fg_w = int(sw * fg_scale)
-            fg_h = height
-            fg_resized = scene_img.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
+                fg_scale = min(width / sw, height / sh)
+                fg_w = int(sw * fg_scale)
+                fg_h = int(sh * fg_scale)
+                fg_resized = scene_img.resize((fg_w, fg_h), Image.Resampling.LANCZOS)
+                pos_x = (width - fg_w) // 2
+                pos_y = (height - fg_h) // 2
+                frame.paste(fg_resized, (pos_x, pos_y))
 
-            # 3. 합성 (중앙 배치)
-            pos_x = (width - fg_w) // 2
-            pos_y = 0
-            blurred_bg.paste(fg_resized, (pos_x, pos_y))
+            # 2. 초고화질 선명도(Sharpness) 및 질감 디테일 보정:
+            # 업스케일링 과정에서의 미세 블러를 제거하고 고해상도 특유의 선명한 질감 연출
+            frame = frame.filter(ImageFilter.UnsharpMask(radius=1.2, percent=125, threshold=2))
 
             out_path = target_dir / f"frame_{idx:02d}.png"
-            blurred_bg.save(out_path, "PNG", quality=95)
+            frame.save(out_path, "PNG", compress_level=1)
             fhd_paths.append(out_path)
 
         return fhd_paths

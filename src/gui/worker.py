@@ -83,9 +83,9 @@ class AutomationWorker(QThread):
             suno_job_id = client.create_music_task(suno_prompt, suno_style, title, self.is_instrumental)
             self.log_signal.emit(f"✅ Suno Job ID 발급 완료: {suno_job_id}")
 
-            self.log_signal.emit("📡 Apiframe을 통해 Nano Banana 2 Lite 4K (16:9 씬, 9장) 이미지 작업을 요청합니다...")
-            image_job_id = client.create_image_task(image_prompt, aspect_ratio="16:9", resolution="4K")
-            self.log_signal.emit(f"✅ Nano Banana 4K Job ID 발급 완료: {image_job_id}")
+            self.log_signal.emit("📡 Apiframe을 통해 Nano Banana 2 초고화질 4K (16:9 씬, 9장) 이미지 작업을 요청합니다...")
+            image_job_id = client.create_image_task(image_prompt, model="nano-banana-2", aspect_ratio="16:9", resolution="4K")
+            self.log_signal.emit(f"✅ Nano Banana 2 4K Job ID 발급 완료: {image_job_id}")
 
             self.step_signal.emit(3)
             self.progress_signal.emit(35, "3단계: AI 오디오 및 비주얼 에셋 생성 대기 중...")
