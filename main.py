@@ -19,6 +19,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# Windows 작업표시줄에 고유 앱 아이콘이 정상 표시되도록 AppUserModelID 설정
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("aidomus.musicstudio.app")
+    except Exception:
+        pass
+
 from src.config import OUTPUT_DIR
 
 def run_cli_encoding(target_dir: str, fade_duration: float = 1.5):

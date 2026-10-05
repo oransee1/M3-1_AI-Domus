@@ -118,7 +118,8 @@ class GeminiPromptAgent:
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
                         temperature=0.7,
-                        response_mime_type="application/json"
+                        response_mime_type="application/json",
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
                     )
                 )
                 raw_text = response.text.strip()

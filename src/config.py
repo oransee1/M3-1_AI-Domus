@@ -10,6 +10,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+# Application Icon
+ICON_PATH = BASE_DIR / "icon.png"
+
 # Load environment variables
 ENV_FILE = BASE_DIR / ".env"
 load_dotenv(ENV_FILE)

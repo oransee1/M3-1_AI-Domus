@@ -9,12 +9,22 @@ from PyQt5.QtWidgets import (
     QSplitter, QScrollArea, QFrame, QFileDialog
 )
 from PyQt5.QtCore import Qt, QUrl, QTimer
-from PyQt5.QtGui import QFont, QDesktopServices, QPixmap
+from PyQt5.QtGui import QFont, QDesktopServices, QPixmap, QIcon
 from PIL import Image
 
-from src.config import Config, OUTPUT_DIR
+from src.config import Config, OUTPUT_DIR, ICON_PATH
 from src.media.image_processor import ImageProcessor
 from src.gui.worker import AutomationWorker, EncodingWorker
+
+def get_app_icon() -> QIcon:
+    """프로그램 및 작업표시줄 표시용 QIcon 객체를 반환합니다."""
+    icon = QIcon()
+    if ICON_PATH.exists():
+        icon.addFile(str(ICON_PATH))
+    ico_path = ICON_PATH.with_suffix(".ico")
+    if ico_path.exists():
+        icon.addFile(str(ico_path))
+    return icon
 
 MODERN_STYLE = """
 QWidget {
@@ -155,6 +165,7 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("API 키 환경 설정")
+        self.setWindowIcon(get_app_icon())
         self.resize(520, 220)
         self.setStyleSheet(MODERN_STYLE)
 
@@ -197,6 +208,7 @@ class RenderingProgressDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("⏳ AI 미디어 생성 및 영상 렌더링 진행 중")
+        self.setWindowIcon(get_app_icon())
         self.resize(600, 360)
         self.setStyleSheet(MODERN_STYLE)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
@@ -335,6 +347,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("AI Domus Music Studio - AI 기반 음악 및 영상 제작 자동화")
+        self.setWindowIcon(get_app_icon())
         self.resize(1200, 820)
         self.setStyleSheet(MODERN_STYLE)
 
@@ -864,7 +877,19 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "파일 없음", "재생할 영상 파일이 존재하지 않습니다.")
 
 def run_app():
+    # Windows 작업표시줄에 고유 앱 아이콘이 정상 표시되도록 AppUserModelID 설정
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("aidomus.musicstudio.app")
+        except Exception:
+            pass
+
     app = QApplication(sys.argv)
+    app.setWindowIcon(get_app_icon())
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    run_app()
