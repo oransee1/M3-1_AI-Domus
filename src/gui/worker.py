@@ -76,12 +76,12 @@ class AutomationWorker(QThread):
             used_engine = plan.get("engine", "지능형 백업 엔진")
 
             self.log_signal.emit(f"✨ [AI 기획 완료] 곡명: {title} (기획 엔진: {used_engine})")
+            self.log_signal.emit(f"🎵 [음악 장르 100% 매칭] 선택 장르: '{self.genre}' ➜ Suno Style 태그: '{suno_style}'")
             if self.is_instrumental:
-                self.log_signal.emit(f"🎵 Suno 음악 프롬프트: {suno_prompt}")
+                self.log_signal.emit(f"🎹 [Suno 악기/사운드 구성] {suno_prompt}")
             else:
                 lyrics_preview = suno_prompt.replace('\n', ' ')[:90]
-                self.log_signal.emit(f"🎤 Suno 보컬 가사: {lyrics_preview}...")
-                self.log_signal.emit(f"🎵 Suno 보컬 스타일: {suno_style}")
+                self.log_signal.emit(f"🎤 [Suno 보컬 가사] {lyrics_preview}...")
             self.log_signal.emit(f"🎨 Nano Banana 3x3 4K(16:9) 이미지 프롬프트: {image_prompt[:90]}...")
             
             self.step_signal.emit(2)
@@ -89,7 +89,8 @@ class AutomationWorker(QThread):
 
             # 2. Apiframe 작업 발주
             client = ApiframeClient()
-            self.log_signal.emit("📡 Apiframe을 통해 Suno 오디오 작업을 요청합니다...")
+            inst_desc = "순수 연주곡 (Instrumental)" if self.is_instrumental else "보컬 곡 (Vocal)"
+            self.log_signal.emit(f"📡 Apiframe Suno V5_5 전송 (장르: '{self.genre}' | Style 태그: '{suno_style}' | {inst_desc} | Custom Mode: True)...")
             suno_job_id = client.create_music_task(suno_prompt, suno_style, title, self.is_instrumental)
             self.log_signal.emit(f"✅ Suno Job ID 발급 완료: {suno_job_id}")
 

@@ -34,6 +34,52 @@ class GeminiPromptAgent:
         "gemini-2.5-flash",
     ]
 
+    # GUI 음악 장르별 100% 매칭 Suno 사운드 & 스타일 프로필 정의
+    GENRE_PROFILES = {
+        "New Age / Piano": {
+            "primary_tags": "new age, solo piano, peaceful, calm, melodic piano, healing, serene",
+            "instruments": "acoustic grand piano, warm ambient pads, gentle cello, soft melodic chords",
+            "tempo": "70-76 BPM",
+            "vocal_style": "gentle female vocal, soft acoustic ballad, emotional, clear, soothing",
+            "description": "serene and emotional new age piano with tranquil melodies and healing harmony"
+        },
+        "Lo-Fi / Chillhop": {
+            "primary_tags": "lo-fi, chillhop, jazzy beats, mellow rhodes, relaxed groove, vinyl crackle, cozy, chill",
+            "instruments": "rhodes electric piano, lo-fi drum beats, warm sub bass, subtle vinyl dust, tape warmth",
+            "tempo": "75-85 BPM",
+            "vocal_style": "lo-fi indie vocal, relaxed, intimate, cozy, warm tone",
+            "description": "cozy lo-fi chillhop with relaxing hip-hop beats, warm rhodes chords, and nostalgic tape texture"
+        },
+        "Ambient / Meditation": {
+            "primary_tags": "ambient, meditation, drone, atmospheric pads, deep relaxation, soundscape, peaceful, healing",
+            "instruments": "atmospheric synth pads, soft drone, gentle singing bowl, spatial reverb, airy chimes",
+            "tempo": "60-68 BPM, slow flowing",
+            "vocal_style": "ethereal ambient vocal, airy chanting, soft meditative tones",
+            "description": "spacious ambient soundscape designed for deep meditation, mindful breathing, and total peace"
+        },
+        "Cinematic Neoclassical": {
+            "primary_tags": "cinematic, neoclassical, orchestral strings, emotive piano, dramatic, elegant, emotional",
+            "instruments": "expressive cello, lush violin orchestra, grand acoustic piano, dynamic orchestral crescendo",
+            "tempo": "65-75 BPM",
+            "vocal_style": "cinematic vocal, dramatic, emotional, operatic texture, soaring melodies",
+            "description": "breathtaking cinematic neoclassical composition with rich orchestral strings and moving grand piano"
+        },
+        "Smooth Jazz": {
+            "primary_tags": "smooth jazz, mellow saxophone, soft rhodes piano, warm upright bass, gentle brush drums, lounge",
+            "instruments": "warm tenor saxophone, smooth electric piano, acoustic upright double bass, subtle brush kit",
+            "tempo": "80-90 BPM",
+            "vocal_style": "smooth jazz vocal, velvety tone, soulful, warm, intimate lounge delivery",
+            "description": "sophisticated smooth jazz with warm mellow saxophone, acoustic upright bass, and gentle brush rhythm"
+        },
+        "Acoustic Guitar": {
+            "primary_tags": "acoustic guitar, fingerpicking guitar, warm acoustic folk, gentle strings, soothing melody, serene",
+            "instruments": "fingerstyle steel-string acoustic guitar, nylon string warmth, subtle acoustic bass, gentle melodic fingerpicking",
+            "tempo": "72-80 BPM",
+            "vocal_style": "intimate acoustic folk vocal, heartfelt, soft, warm, natural tone",
+            "description": "warm fingerpicking acoustic guitar with intimate folk textures and soothing organic resonance"
+        },
+    }
+
     def get_all_free_models(self) -> list:
         """계정에서 활성화된 무료 Gemini 엔진 목록을 동적으로 탐색하여 확장 목록을 구성합니다."""
         models = list(self.FREE_GEMINI_ENGINES)
@@ -51,7 +97,7 @@ class GeminiPromptAgent:
             pass
         return models
 
-    def plan_prompts(self, mood: str, genre: str = "New Age", is_instrumental: bool = True, custom_lyrics: str = "", image_style: str = "photo", log_callback=None) -> dict:
+    def plan_prompts(self, mood: str, genre: str = "New Age / Piano", is_instrumental: bool = True, custom_lyrics: str = "", image_style: str = "photo", log_callback=None) -> dict:
         """
         사용자의 한국어 입력(분위기, 장르 등)을 분석하여
         Suno 음악 프롬프트와 Nano Banana 3x3 그리드 스토리보드 프롬프트를 동시 기획합니다.
@@ -59,12 +105,27 @@ class GeminiPromptAgent:
         이미지 스타일(image_style: 'photo' 또는 'art')을 완벽 지원하며,
         무료 Gemini API의 쿼터 제한을 우회하기 위해 모든 무료 Gemini 엔진을 순차 탐색합니다.
         """
+        # 선택된 장르의 프로필 확인 (미등록 장르일 경우 기본 New Age 프로필 적용)
+        genre_info = self.GENRE_PROFILES.get(genre)
+        if not genre_info:
+            for k, v in self.GENRE_PROFILES.items():
+                if k.lower() in genre.lower() or any(w.lower() in genre.lower() for w in k.split()):
+                    genre_info = v
+                    break
+        if not genre_info:
+            genre_info = self.GENRE_PROFILES["New Age / Piano"]
+
+        primary_tags = genre_info["primary_tags"]
+        inst_desc = genre_info["instruments"]
+        tempo_desc = genre_info["tempo"]
+
         if is_instrumental:
             suno_prompt_rule = (
-                "Detailed description of melody, instruments (e.g. acoustic piano, warm cello, soft ambient pads), "
-                "BPM, emotion, atmosphere. 30-60 words. Emphasize pure instrumental BGM, serene and peaceful, no vocals."
+                f"Detailed musical description tailored strictly to the '{genre}' genre. "
+                f"Core instruments MUST feature: {inst_desc}. Tempo: {tempo_desc}. "
+                f"BPM, emotion, atmosphere. 30-60 words. Emphasize pure instrumental BGM, serene and peaceful, NO vocals."
             )
-            suno_style_rule = "Comma separated genre tags e.g. new age, piano solo, ambient neoclassical, instrumental"
+            suno_style_rule = f"Comma separated style and genre tags. MUST strictly begin with '{primary_tags}', followed by mood/tempo tags."
         else:
             if custom_lyrics:
                 escaped_lyrics = custom_lyrics.replace('"', '\\"').replace('\n', ' ')
@@ -73,10 +134,11 @@ class GeminiPromptAgent:
                 )
             else:
                 suno_prompt_rule = (
-                    "Poetic, emotionally resonant song lyrics matching the mood and genre (Korean or English). "
-                    "Structured into standard song sections: [Verse 1], [Chorus], [Verse 2], [Chorus], [Outro]. 15-25 lines."
+                    f"Poetic, emotionally resonant song lyrics matching the mood and '{genre}' genre (Korean or English). "
+                    f"Structured into standard song sections: [Verse 1], [Chorus], [Verse 2], [Chorus], [Outro]. 15-25 lines."
                 )
-            suno_style_rule = "Comma separated genre and vocal tags e.g. acoustic ballad, gentle female vocal, emotional, soothing, soft piano"
+            vocal_style_desc = genre_info["vocal_style"]
+            suno_style_rule = f"Comma separated genre and vocal tags. MUST strictly begin with '{primary_tags}, {vocal_style_desc}', followed by mood tags."
 
         is_art = (image_style == "art")
         if is_art:
@@ -102,7 +164,7 @@ class GeminiPromptAgent:
             "You are an expert Creative Director & AI Prompt Engineer for YouTube music channels "
             "(specializing in healing, new age, lo-fi, sleep, and meditation music like 'Dancing with Angels' or 'Gentle Mind').\n"
             "Your mission is to take the user's brief concept and produce perfectly aligned prompts for:\n"
-            "1. Suno AI (Music generation): optimized English music description and genre/style tags (or structured lyrics if vocal mode).\n"
+            f"1. Suno AI (Music generation): optimized English music description and genre/style tags (or structured lyrics if vocal mode). The musical style and instruments MUST 100% reflect the specified genre: '{genre}'.\n"
             "2. Nano Banana 2 4K (Image generation): a prompt specifically requesting a '3x3 grid storyboard' "
             "with 9 distinct sequential cinematic scenes. Each individual scene frame MUST be in 16:9 widescreen ratio, "
             "and the entire storyboard image MUST be in crisp Ultra-HD 4K resolution (3840x2160).\n\n"
@@ -125,7 +187,7 @@ class GeminiPromptAgent:
         user_content = (
             f"User Concept:\n"
             f"- Mood / Theme: {mood}\n"
-            f"- Genre: {genre}\n"
+            f"- Genre: {genre} (Mandatory core instruments: {inst_desc})\n"
             f"- Mode: {'Instrumental (Pure BGM, No Vocals)' if is_instrumental else 'Vocal Song (With Lyrics)'}{lyrics_info}\n\n"
             f"Mandatory Visual Guidelines:\n"
             f"{visual_guideline_style}\n"
@@ -164,6 +226,8 @@ class GeminiPromptAgent:
                     result["engine"] = model_name
                     # 선택된 이미지 유형(사진 vs 그림) 및 등장 인물 배제(풍경/자연 전용) 보장 후처리 가드
                     result["image_prompt"] = self._enforce_style_and_no_people(result["image_prompt"], image_style=image_style)
+                    # 선택된 음악 장르 태그가 Suno style에 100% 최우선 반영되도록 보장하는 후처리 가드
+                    result["suno_style"] = self._enforce_suno_genre(result.get("suno_style", genre), genre=genre)
                     if log_callback:
                         log_callback(f"✅ [Gemini 엔진 가동 성공] 무료 엔진 '{model_name}'으로 기획 완료!")
                     return result
@@ -258,17 +322,64 @@ class GeminiPromptAgent:
 
         return cleaned
 
-    @staticmethod
-    def _smart_fallback_plan(mood: str, genre: str, is_instrumental: bool, custom_lyrics: str = "", image_style: str = "photo") -> dict:
-        """Gemini 서버 일시 부하(503) 시에도 제작이 중단되지 않도록 하는 지능형 백업 플래너"""
-        title = f"{genre} - Autumn Serenity" if any(w in mood for w in ["가을", "단풍", "10월"]) else f"{genre} - Peaceful Healing"
+    @classmethod
+    def _enforce_suno_genre(cls, suno_style: str, genre: str) -> str:
+        """
+        Suno에 전달되는 style 태그에 사용자가 GUI에서 선택한 음악 장르의 핵심 키워드가
+        100% 반드시 최우선으로 포함되도록 보장하는 가드 함수
+        """
+        genre_info = cls.GENRE_PROFILES.get(genre)
+        if not genre_info:
+            for k, v in cls.GENRE_PROFILES.items():
+                if k.lower() in genre.lower() or any(w.lower() in genre.lower() for w in k.split()):
+                    genre_info = v
+                    break
+        if not genre_info:
+            genre_info = cls.GENRE_PROFILES["New Age / Piano"]
+
+        primary_tags = genre_info["primary_tags"]
+        primary_key = primary_tags.split(",")[0].strip().lower()
+        if primary_key not in suno_style.lower():
+            combined = f"{primary_tags}, {suno_style.strip()}"
+        else:
+            combined = suno_style.strip()
+
+        # 중복 태그 정제 및 순서 보존
+        tags = [t.strip() for t in combined.split(",") if t.strip()]
+        seen = set()
+        unique_tags = []
+        for t in tags:
+            lower_t = t.lower()
+            if lower_t not in seen:
+                seen.add(lower_t)
+                unique_tags.append(t)
+        return ", ".join(unique_tags)
+
+    @classmethod
+    def _smart_fallback_plan(cls, mood: str, genre: str, is_instrumental: bool, custom_lyrics: str = "", image_style: str = "photo") -> dict:
+        """Gemini 서버 일시 부하(503) 시에도 제작이 중단되지 않도록 하는 지능형 백업 플래너 (장르별 맞춤 악기 완벽 적용)"""
+        title = f"{genre.split('/')[0].strip()} - Autumn Serenity" if any(w in mood for w in ["가을", "단풍", "10월"]) else f"{genre.split('/')[0].strip()} - Peaceful Healing"
         
+        genre_info = cls.GENRE_PROFILES.get(genre)
+        if not genre_info:
+            for k, v in cls.GENRE_PROFILES.items():
+                if k.lower() in genre.lower() or any(w.lower() in genre.lower() for w in k.split()):
+                    genre_info = v
+                    break
+        if not genre_info:
+            genre_info = cls.GENRE_PROFILES["New Age / Piano"]
+
+        primary_tags = genre_info["primary_tags"]
+        inst_desc = genre_info["instruments"]
+        tempo_desc = genre_info["tempo"]
+        genre_desc = genre_info["description"]
+
         if is_instrumental:
             suno_prompt = (
-                f"Relaxing {genre.lower()} music, warm acoustic piano chords, soft gentle cello melodies, "
-                f"subtle background vinyl warmth, calm healing atmosphere, instrumental, soothing, no vocals. 72 BPM."
+                f"Relaxing {genre_desc}, featuring {inst_desc}. "
+                f"Calm healing atmosphere, instrumental, soothing, no vocals. {tempo_desc}."
             )
-            suno_style = f"{genre.lower()}, acoustic, piano, ambient, healing, instrumental"
+            suno_style = f"{primary_tags}, ambient, healing, instrumental"
         else:
             if custom_lyrics:
                 suno_prompt = custom_lyrics
@@ -287,7 +398,8 @@ class GeminiPromptAgent:
                     f"[Outro]\n"
                     f"편안한 꿈결 속으로..."
                 )
-            suno_style = f"{genre.lower()}, acoustic, gentle female vocal, healing ballad, emotional piano"
+            vocal_style = genre_info["vocal_style"]
+            suno_style = f"{primary_tags}, {vocal_style}, healing ballad"
         
         if image_style == "art":
             image_prompt = (

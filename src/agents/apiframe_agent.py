@@ -26,6 +26,7 @@ class ApiframeClient:
             "model": "suno",
             "prompt": prompt,
             "sunoParams": {
+                "custom_mode": True,
                 "model_version": "V5_5",
                 "style": style,
                 "title": title,
