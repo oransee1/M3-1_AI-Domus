@@ -538,6 +538,29 @@ class MainWindow(QMainWindow):
 
         left_layout.addLayout(title_row)
 
+        # 하단 이미지 선택 (영상 좌측 하단 오버레이)
+        bottom_img_row = QHBoxLayout()
+        bottom_img_label = QLabel("하단 이미지:")
+        bottom_img_label.setFixedWidth(72)
+        bottom_img_row.addWidget(bottom_img_label)
+
+        self.bottom_img_path_input = QLineEdit()
+        self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 좌측 하단 표시 이미지)")
+        self.bottom_img_path_input.setReadOnly(True)
+        bottom_img_row.addWidget(self.bottom_img_path_input)
+
+        self.bottom_img_select_btn = QPushButton("📁 이미지 선택")
+        self.bottom_img_select_btn.clicked.connect(self._select_bottom_img_file)
+        bottom_img_row.addWidget(self.bottom_img_select_btn)
+
+        self.bottom_img_clear_btn = QPushButton("❌")
+        self.bottom_img_clear_btn.setFixedWidth(36)
+        self.bottom_img_clear_btn.setToolTip("하단 이미지 선택 해제")
+        self.bottom_img_clear_btn.clicked.connect(self._clear_bottom_img_file)
+        bottom_img_row.addWidget(self.bottom_img_clear_btn)
+
+        left_layout.addLayout(bottom_img_row)
+
         left_layout.addSpacing(15)
 
         # 실행 버튼
@@ -675,6 +698,19 @@ class MainWindow(QMainWindow):
     def _clear_logo_file(self):
         self.logo_path_input.clear()
 
+    def _select_bottom_img_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "영상 좌측 하단에 반영할 이미지 선택",
+            "",
+            "이미지 파일 (*.png *.jpg *.jpeg *.webp *.bmp)"
+        )
+        if file_path:
+            self.bottom_img_path_input.setText(file_path)
+
+    def _clear_bottom_img_file(self):
+        self.bottom_img_path_input.clear()
+
     def start_generation(self):
         mood = self.mood_input.toPlainText().strip()
         if not mood:
@@ -703,6 +739,7 @@ class MainWindow(QMainWindow):
         custom_lyrics = self.lyrics_input.toPlainText().strip() if not is_inst else ""
         logo_path = self.logo_path_input.text().strip()
         video_title = self.title_input.text().strip()
+        bottom_img_path = self.bottom_img_path_input.text().strip()
 
         # 페이드 시간 파싱
         fade_txt = self.fade_combo.currentText()
@@ -722,7 +759,8 @@ class MainWindow(QMainWindow):
             custom_lyrics=custom_lyrics,
             logo_path=logo_path,
             video_title=video_title,
-            image_style=image_style
+            image_style=image_style,
+            bottom_image_path=bottom_img_path
         )
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
@@ -782,12 +820,14 @@ class MainWindow(QMainWindow):
 
         logo_path = self.logo_path_input.text().strip()
         video_title = self.title_input.text().strip()
+        bottom_img_path = self.bottom_img_path_input.text().strip()
 
         self.worker = EncodingWorker(
             p,
             fade_duration=fade_dur,
             logo_path=logo_path,
-            video_title=video_title
+            video_title=video_title,
+            bottom_image_path=bottom_img_path
         )
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)

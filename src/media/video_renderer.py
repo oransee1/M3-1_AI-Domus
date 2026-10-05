@@ -31,6 +31,7 @@ class VideoRenderer:
         fade_duration: float = 1.5,
         logo_path: Optional[Path] = None,
         title_path: Optional[Path] = None,
+        bottom_image_path: Optional[Path] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Path:
         """
@@ -39,7 +40,8 @@ class VideoRenderer:
         씬 간 부드러운 크로스페이드(Fade In / Fade Out) 전환 효과 및
         영상 시작/종료 페이드 효과를 적용하여 1080p FHD MP4 비디오로 렌더링합니다.
         외부 로고 이미지가 지정된 경우 영상 좌측 상단(Top-Left: 35:35)에 오버레이 합성하며,
-        영상 제목이 지정된 경우 영상 우측 상단(Top-Right: W-w-35:35)에 오버레이 합성합니다.
+        영상 제목이 지정된 경우 영상 우측 상단(Top-Right: W-w-35:35)에 오버레이 합성하며,
+        하단 이미지가 지정된 경우 영상 좌측 하단(Bottom-Left: 35:H-h-35)에 오버레이 합성합니다.
         """
         output_mp4.parent.mkdir(parents=True, exist_ok=True)
         if total_duration is None or total_duration <= 0:
@@ -51,10 +53,11 @@ class VideoRenderer:
 
         has_logo = bool(logo_path and Path(logo_path).exists())
         has_title = bool(title_path and Path(title_path).exists())
+        has_bottom_image = bool(bottom_image_path and Path(bottom_image_path).exists())
 
         # 페이드 시간이 비활성화되어 있거나 이미지가 1장일 경우 고속 concat 모드
         if fade_duration <= 0 or num_images < 2:
-            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, title_path, progress_callback)
+            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, title_path, bottom_image_path, progress_callback)
 
         # MoveEditor-AutoProgram 방식: 오버랩 페이드 시간을 고려한 씬 지속시간 계산
         # N * scene_dur - (N - 1) * fade_duration = total_duration
@@ -73,7 +76,7 @@ class VideoRenderer:
         audio_index = num_images
         cmd.extend(["-i", audio_safe_path])
 
-        # 3. 추가 오버레이 인풋 등록 (로고: 좌측 상단 / 제목: 우측 상단)
+        # 3. 추가 오버레이 인풋 등록 (로고: 좌측 상단 / 제목: 우측 상단 / 하단 이미지: 좌측 하단)
         current_input_index = num_images + 1
         logo_index = None
         if has_logo:
@@ -89,7 +92,14 @@ class VideoRenderer:
             title_index = current_input_index
             current_input_index += 1
 
-        # 4. Filter Complex 생성 (씬 간 크로스페이드 + 시작/종료 페이드 + 좌측 상단 로고 + 우측 상단 제목)
+        bottom_image_index = None
+        if has_bottom_image:
+            safe_bottom_image_path = str(Path(bottom_image_path).resolve()).replace("\\", "/")
+            cmd.extend(["-i", safe_bottom_image_path])
+            bottom_image_index = current_input_index
+            current_input_index += 1
+
+        # 4. Filter Complex 생성 (씬 간 크로스페이드 + 시작/종료 페이드 + 좌측 상단 로고 + 우측 상단 제목 + 좌측 하단 이미지)
         filter_parts = []
         last_label = "0:v"
         for i in range(1, num_images):
@@ -103,7 +113,7 @@ class VideoRenderer:
 
         # 영상 시작 페이드 인 및 종료 페이드 아웃
         fade_out_st = max(0.0, total_duration - fade_duration)
-        if has_logo or has_title:
+        if has_logo or has_title or has_bottom_image:
             filter_parts.append(
                 f"[v_crossfaded]fade=t=in:st=0:d={fade_duration:.3f},fade=t=out:st={fade_out_st:.3f}:d={fade_duration:.3f}[v_fade]"
             )
@@ -114,7 +124,7 @@ class VideoRenderer:
                 filter_parts.append(
                     f"[{logo_index}:v]scale=w='min(50,iw)':h=-1[logo_scaled]"
                 )
-                next_v = "v_with_logo" if has_title else "vout"
+                next_v = "v_after_logo" if (has_title or has_bottom_image) else "vout"
                 filter_parts.append(
                     f"[{current_v}][logo_scaled]overlay=35:35[{next_v}]"
                 )
@@ -122,8 +132,19 @@ class VideoRenderer:
 
             # 우측 상단 제목 배지 오버레이 (우측 35px / 상단 35px 여백)
             if has_title:
+                next_v = "v_after_title" if has_bottom_image else "vout"
                 filter_parts.append(
-                    f"[{current_v}][{title_index}:v]overlay=W-w-35:35[vout]"
+                    f"[{current_v}][{title_index}:v]overlay=W-w-35:35[{next_v}]"
+                )
+                current_v = next_v
+
+            # 좌측 하단 이미지 오버레이 (좌측 35px / 하단 35px 여백)
+            if has_bottom_image:
+                filter_parts.append(
+                    f"[{bottom_image_index}:v]scale=w='min(180,iw)':h='min(80,ih)':force_original_aspect_ratio=decrease[bimg_scaled]"
+                )
+                filter_parts.append(
+                    f"[{current_v}][bimg_scaled]overlay=35:H-h-35[vout]"
                 )
         else:
             filter_parts.append(
@@ -202,9 +223,10 @@ class VideoRenderer:
         total_duration: float,
         logo_path: Optional[Path] = None,
         title_path: Optional[Path] = None,
+        bottom_image_path: Optional[Path] = None,
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Path:
-        """기본 슬라이드쇼 concat fallback 엔진 (로고 및 제목 오버레이 지원)"""
+        """기본 슬라이드쇼 concat fallback 엔진 (로고, 제목, 하단 이미지 오버레이 지원)"""
         num_images = len(image_paths)
         time_per_image = total_duration / num_images
 
@@ -219,6 +241,7 @@ class VideoRenderer:
 
         has_logo = bool(logo_path and Path(logo_path).exists())
         has_title = bool(title_path and Path(title_path).exists())
+        has_bottom_image = bool(bottom_image_path and Path(bottom_image_path).exists())
 
         cmd = [
             self.ffmpeg_path,
@@ -244,16 +267,28 @@ class VideoRenderer:
             title_idx = curr_idx
             curr_idx += 1
 
-        if has_logo or has_title:
+        bottom_img_idx = None
+        if has_bottom_image:
+            safe_bimg = str(Path(bottom_image_path).resolve()).replace("\\", "/")
+            cmd.extend(["-i", safe_bimg])
+            bottom_img_idx = curr_idx
+            curr_idx += 1
+
+        if has_logo or has_title or has_bottom_image:
             filter_parts = []
             current_v = "0:v"
             if has_logo:
                 filter_parts.append(f"[{logo_idx}:v]scale=w='min(50,iw)':h=-1[logo]")
-                next_v = "v_tmp" if has_title else "vout"
+                next_v = "v_tmp1" if (has_title or has_bottom_image) else "vout"
                 filter_parts.append(f"[{current_v}][logo]overlay=35:35[{next_v}]")
                 current_v = next_v
             if has_title:
-                filter_parts.append(f"[{current_v}][{title_idx}:v]overlay=W-w-35:35[vout]")
+                next_v = "v_tmp2" if has_bottom_image else "vout"
+                filter_parts.append(f"[{current_v}][{title_idx}:v]overlay=W-w-35:35[{next_v}]")
+                current_v = next_v
+            if has_bottom_image:
+                filter_parts.append(f"[{bottom_img_idx}:v]scale=w='min(180,iw)':h='min(80,ih)':force_original_aspect_ratio=decrease[bimg]")
+                filter_parts.append(f"[{current_v}][bimg]overlay=35:H-h-35[vout]")
 
             cmd.extend([
                 "-filter_complex", ";".join(filter_parts),

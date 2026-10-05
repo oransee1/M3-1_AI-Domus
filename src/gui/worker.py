@@ -17,7 +17,7 @@ class AutomationWorker(QThread):
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = "", logo_path: str = "", video_title: str = "", image_style: str = "photo"):
+    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = "", logo_path: str = "", video_title: str = "", image_style: str = "photo", bottom_image_path: str = ""):
         super().__init__()
         self.mood = mood
         self.genre = genre
@@ -27,6 +27,7 @@ class AutomationWorker(QThread):
         self.logo_path = logo_path
         self.video_title = video_title
         self.image_style = image_style
+        self.bottom_image_path = bottom_image_path
 
     def run(self):
         try:
@@ -214,6 +215,17 @@ class AutomationWorker(QThread):
                     self.log_signal.emit(f"⚠️ [제목 처리 경고] 제목 오버레이 생성 실패 ({e}) - 제목 없이 렌더링을 진행합니다.")
                     prepared_title_path = None
 
+            # 하단 이미지 준비 (지정된 경우 영상 좌측 하단 오버레이)
+            prepared_bottom_image = None
+            if self.bottom_image_path and Path(self.bottom_image_path).exists():
+                try:
+                    prepared_bottom_image = work_dir / "bottom_image_prepared.png"
+                    ImageProcessor.prepare_bottom_image(Path(self.bottom_image_path), prepared_bottom_image, max_width=180, max_height=80)
+                    self.log_signal.emit(f"🖼️ [하단 이미지 오버레이] 이미지 규격화 완료: {Path(self.bottom_image_path).name} ➜ 영상 좌측 하단에 반영됩니다.")
+                except Exception as e:
+                    self.log_signal.emit(f"⚠️ [하단 이미지 경고] 이미지 로딩 실패 ({e}) - 이미지 없이 렌더링을 진행합니다.")
+                    prepared_bottom_image = None
+
             renderer.render_slideshow(
                 image_paths=fhd_frames,
                 audio_path=audio_file,
@@ -222,6 +234,7 @@ class AutomationWorker(QThread):
                 fade_duration=self.fade_duration,
                 logo_path=prepared_logo,
                 title_path=prepared_title_path,
+                bottom_image_path=prepared_bottom_image,
                 progress_callback=render_callback
             )
 
@@ -251,12 +264,13 @@ class EncodingWorker(QThread):
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, project_dir: Path, fade_duration: float = 1.5, logo_path: str = "", video_title: str = ""):
+    def __init__(self, project_dir: Path, fade_duration: float = 1.5, logo_path: str = "", video_title: str = "", bottom_image_path: str = ""):
         super().__init__()
         self.project_dir = Path(project_dir)
         self.fade_duration = fade_duration
         self.logo_path = logo_path
         self.video_title = video_title
+        self.bottom_image_path = bottom_image_path
 
     def run(self):
         try:
@@ -343,6 +357,17 @@ class EncodingWorker(QThread):
                     self.log_signal.emit(f"⚠️ [제목 처리 경고] 제목 오버레이 생성 실패 ({e}) - 제목 없이 렌더링을 진행합니다.")
                     prepared_title_path = None
 
+            # 하단 이미지 준비 (지정된 경우 영상 좌측 하단 오버레이)
+            prepared_bottom_image = None
+            if self.bottom_image_path and Path(self.bottom_image_path).exists():
+                try:
+                    prepared_bottom_image = self.project_dir / "bottom_image_prepared.png"
+                    ImageProcessor.prepare_bottom_image(Path(self.bottom_image_path), prepared_bottom_image, max_width=180, max_height=80)
+                    self.log_signal.emit(f"🖼️ [하단 이미지 오버레이] 이미지 규격화 완료: {Path(self.bottom_image_path).name} ➜ 영상 좌측 하단에 반영됩니다.")
+                except Exception as e:
+                    self.log_signal.emit(f"⚠️ [하단 이미지 경고] 이미지 로딩 실패 ({e}) - 이미지 없이 렌더링을 진행합니다.")
+                    prepared_bottom_image = None
+
             renderer.render_slideshow(
                 image_paths=fhd_frames,
                 audio_path=audio_file,
@@ -351,6 +376,7 @@ class EncodingWorker(QThread):
                 fade_duration=self.fade_duration,
                 logo_path=prepared_logo,
                 title_path=prepared_title_path,
+                bottom_image_path=prepared_bottom_image,
                 progress_callback=render_callback
             )
 

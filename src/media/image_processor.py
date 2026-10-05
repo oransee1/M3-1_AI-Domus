@@ -157,6 +157,24 @@ class ImageProcessor:
         return output_file
 
     @staticmethod
+    def prepare_bottom_image(image_path: Path, output_file: Path, max_width: int = 180, max_height: int = 80) -> Path:
+        """
+        사용자가 지정한 외부 하단 이미지를 1080p FHD 영상 좌측 하단 규격에 맞게
+        원본 종횡비를 유지하며 리사이즈하고 투명 알파(RGBA) PNG로 정제합니다.
+        """
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        img = Image.open(image_path).convert("RGBA")
+        w, h = img.size
+
+        scale = min(max_width / w, max_height / h, 1.0)
+        target_w = max(1, int(w * scale))
+        target_h = max(1, int(h * scale))
+
+        resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        resized.save(output_file, "PNG")
+        return output_file
+
+    @staticmethod
     def create_title_overlay(
         title_text: str,
         output_file: Path,
