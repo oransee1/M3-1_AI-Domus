@@ -78,6 +78,13 @@ class GeminiPromptAgent:
             "vocal_style": "intimate acoustic folk vocal, heartfelt, soft, warm, natural tone",
             "description": "warm fingerpicking acoustic guitar with intimate folk textures and soothing organic resonance"
         },
+        "Glam Rock": {
+            "primary_tags": "glam rock, 70s rock, hard rock, energetic electric guitar, stomping rock drums, punchy bass, flamboyant, driving anthem",
+            "instruments": "distorted electric guitars, roaring guitar riffs, driving power chords, punchy bass guitar, heavy rock drum kit, energetic vintage synthesizers",
+            "tempo": "120-135 BPM",
+            "vocal_style": "powerful charismatic rock vocal, theatrical, dynamic, gritty high-energy delivery",
+            "description": "flamboyant and energetic 70s glam rock with driving electric guitar riffs, stomping arena beat, and powerful anthem groove"
+        },
     }
 
     def get_all_free_models(self) -> list:
@@ -358,7 +365,11 @@ class GeminiPromptAgent:
     @classmethod
     def _smart_fallback_plan(cls, mood: str, genre: str, is_instrumental: bool, custom_lyrics: str = "", image_style: str = "photo") -> dict:
         """Gemini 서버 일시 부하(503) 시에도 제작이 중단되지 않도록 하는 지능형 백업 플래너 (장르별 맞춤 악기 완벽 적용)"""
-        title = f"{genre.split('/')[0].strip()} - Autumn Serenity" if any(w in mood for w in ["가을", "단풍", "10월"]) else f"{genre.split('/')[0].strip()} - Peaceful Healing"
+        is_rock = "rock" in genre.lower()
+        if is_rock:
+            title = f"{genre.split('/')[0].strip()} - Electric Anthem"
+        else:
+            title = f"{genre.split('/')[0].strip()} - Autumn Serenity" if any(w in mood for w in ["가을", "단풍", "10월"]) else f"{genre.split('/')[0].strip()} - Peaceful Healing"
         
         genre_info = cls.GENRE_PROFILES.get(genre)
         if not genre_info:
@@ -375,31 +386,56 @@ class GeminiPromptAgent:
         genre_desc = genre_info["description"]
 
         if is_instrumental:
-            suno_prompt = (
-                f"Relaxing {genre_desc}, featuring {inst_desc}. "
-                f"Calm healing atmosphere, instrumental, soothing, no vocals. {tempo_desc}."
-            )
-            suno_style = f"{primary_tags}, ambient, healing, instrumental"
+            if is_rock:
+                suno_prompt = (
+                    f"Driving energetic {genre_desc}, featuring {inst_desc}. "
+                    f"Powerful rock atmosphere, instrumental, stomping beat, no vocals. {tempo_desc}."
+                )
+                suno_style = f"{primary_tags}, instrumental, driving anthem"
+            else:
+                suno_prompt = (
+                    f"Relaxing {genre_desc}, featuring {inst_desc}. "
+                    f"Calm healing atmosphere, instrumental, soothing, no vocals. {tempo_desc}."
+                )
+                suno_style = f"{primary_tags}, ambient, healing, instrumental"
         else:
             if custom_lyrics:
                 suno_prompt = custom_lyrics
             else:
-                suno_prompt = (
-                    f"[Verse 1]\n"
-                    f"창가에 스며든 따스한 바람\n"
-                    f"지친 마음에 건네는 작은 위로처럼\n"
-                    f"조용히 흐르는 시간 속에서\n"
-                    f"온전한 평온을 마주해요\n\n"
-                    f"[Chorus]\n"
-                    f"기억해요 그대의 소중한 순간\n"
-                    f"따뜻한 별빛이 감싸 안듯\n"
-                    f"이 노래가 마음에 머물러\n"
-                    f"포근한 안식이 되길\n\n"
-                    f"[Outro]\n"
-                    f"편안한 꿈결 속으로..."
-                )
-            vocal_style = genre_info["vocal_style"]
-            suno_style = f"{primary_tags}, {vocal_style}, healing ballad"
+                if is_rock:
+                    suno_prompt = (
+                        f"[Verse 1]\n"
+                        f"Neon lights flashing in the midnight air\n"
+                        f"Electric sound and excitement everywhere\n"
+                        f"Feel the boots stomping to the rhythm and beat\n"
+                        f"Glamour and fire running down the street\n\n"
+                        f"[Chorus]\n"
+                        f"Turn up the guitar, let the anthem roll\n"
+                        f"Glitter and thunder deep inside your soul\n"
+                        f"Shouting together under neon stars\n"
+                        f"Forever rock and roll, this world is ours\n\n"
+                        f"[Outro]\n"
+                        f"Glam rock into the night!"
+                    )
+                    vocal_style = genre_info["vocal_style"]
+                    suno_style = f"{primary_tags}, {vocal_style}, rock anthem"
+                else:
+                    suno_prompt = (
+                        f"[Verse 1]\n"
+                        f"창가에 스며든 따스한 바람\n"
+                        f"지친 마음에 건네는 작은 위로처럼\n"
+                        f"조용히 흐르는 시간 속에서\n"
+                        f"온전한 평온을 마주해요\n\n"
+                        f"[Chorus]\n"
+                        f"기억해요 그대의 소중한 순간\n"
+                        f"따뜻한 별빛이 감싸 안듯\n"
+                        f"이 노래가 마음에 머물러\n"
+                        f"포근한 안식이 되길\n\n"
+                        f"[Outro]\n"
+                        f"편안한 꿈결 속으로..."
+                    )
+                    vocal_style = genre_info["vocal_style"]
+                    suno_style = f"{primary_tags}, {vocal_style}, healing ballad"
         
         if image_style == "art":
             image_prompt = (

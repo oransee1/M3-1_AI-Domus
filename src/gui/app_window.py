@@ -435,7 +435,15 @@ class MainWindow(QMainWindow):
         genre_row = QHBoxLayout()
         genre_row.addWidget(QLabel("음악 장르:"))
         self.genre_combo = QComboBox()
-        self.genre_combo.addItems(["New Age / Piano", "Lo-Fi / Chillhop", "Ambient / Meditation", "Cinematic Neoclassical", "Smooth Jazz", "Acoustic Guitar"])
+        self.genre_combo.addItems([
+            "New Age / Piano",
+            "Lo-Fi / Chillhop",
+            "Ambient / Meditation",
+            "Cinematic Neoclassical",
+            "Smooth Jazz",
+            "Acoustic Guitar",
+            "Glam Rock"
+        ])
         genre_row.addWidget(self.genre_combo)
         left_layout.addLayout(genre_row)
 
