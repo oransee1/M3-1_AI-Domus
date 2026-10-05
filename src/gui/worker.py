@@ -17,7 +17,7 @@ class AutomationWorker(QThread):
     finished_signal = pyqtSignal(str, str, list)
     error_signal = pyqtSignal(str)
 
-    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = "", logo_path: str = "", video_title: str = ""):
+    def __init__(self, mood: str, genre: str, is_instrumental: bool, fade_duration: float = 1.5, custom_lyrics: str = "", logo_path: str = "", video_title: str = "", image_style: str = "photo"):
         super().__init__()
         self.mood = mood
         self.genre = genre
@@ -26,6 +26,7 @@ class AutomationWorker(QThread):
         self.custom_lyrics = custom_lyrics
         self.logo_path = logo_path
         self.video_title = video_title
+        self.image_style = image_style
 
     def run(self):
         try:
@@ -42,6 +43,12 @@ class AutomationWorker(QThread):
                 self.log_signal.emit("🎵 [음악 모드] 보컬 없는 순수 연주곡 (Instrumental BGM)")
             else:
                 self.log_signal.emit("🎤 [음악 모드] 보컬 곡 (가사 포함 - Vocal Song with Lyrics)")
+
+            if self.image_style == "art":
+                self.log_signal.emit("🎨 [비주얼 스타일] 감성적인 예술 그림 (Illustration / Artwork, 풍경/자연 전용)")
+            else:
+                self.log_signal.emit("📷 [비주얼 스타일] 100% 실제 사진 (Real Photography, 풍경/자연 전용)")
+
             self.log_signal.emit("🧠 Gemini AI 기획 에이전트가 무드 분석 및 멀티모달 프롬프트 동시 기획을 시작합니다...")
             gemini_agent = GeminiPromptAgent()
             plan = gemini_agent.plan_prompts(
@@ -49,6 +56,7 @@ class AutomationWorker(QThread):
                 self.genre,
                 self.is_instrumental,
                 self.custom_lyrics,
+                image_style=self.image_style,
                 log_callback=self.log_signal.emit
             )
 
@@ -83,7 +91,8 @@ class AutomationWorker(QThread):
             suno_job_id = client.create_music_task(suno_prompt, suno_style, title, self.is_instrumental)
             self.log_signal.emit(f"✅ Suno Job ID 발급 완료: {suno_job_id}")
 
-            self.log_signal.emit("📡 Apiframe을 통해 Nano Banana 2 초고화질 4K (16:9 씬, 9장) 이미지 작업을 요청합니다...")
+            style_desc = "감성 그림" if self.image_style == "art" else "실사 사진"
+            self.log_signal.emit(f"📡 Apiframe을 통해 Nano Banana 2 초고화질 4K ({style_desc}, 16:9 씬, 9장) 이미지 작업을 요청합니다...")
             image_job_id = client.create_image_task(image_prompt, model="nano-banana-2", aspect_ratio="16:9", resolution="4K")
             self.log_signal.emit(f"✅ Nano Banana 2 4K Job ID 발급 완료: {image_job_id}")
 

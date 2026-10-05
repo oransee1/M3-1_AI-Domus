@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QTextEdit, QComboBox, QCheckBox, QPushButton,
     QProgressBar, QGroupBox, QMessageBox, QDialog, QFormLayout, QGridLayout,
-    QSplitter, QScrollArea, QFrame, QFileDialog
+    QSplitter, QScrollArea, QFrame, QFileDialog, QRadioButton, QButtonGroup
 )
 from PyQt5.QtCore import Qt, QUrl, QTimer
 from PyQt5.QtGui import QFont, QDesktopServices, QPixmap, QIcon
@@ -133,6 +133,25 @@ QCheckBox {
 QCheckBox::indicator {
     width: 18px;
     height: 18px;
+}
+QRadioButton {
+    spacing: 8px;
+    color: #cdd6f4;
+    font-size: 13px;
+}
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    border: 2px solid #585b70;
+    background-color: #313244;
+}
+QRadioButton::indicator:checked {
+    border-color: #89b4fa;
+    background-color: #89b4fa;
+}
+QRadioButton::indicator:hover {
+    border-color: #b4befe;
 }
 QLabel#SceneCell {
     background-color: #181825;
@@ -459,6 +478,25 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(self.lyrics_box)
         self.lyrics_box.setVisible(False)
 
+        # 이미지 유형 선택 (라디오 버튼: 실제 사진 vs 그림)
+        style_row = QHBoxLayout()
+        style_label = QLabel("이미지 유형:")
+        style_label.setFixedWidth(72)
+        style_row.addWidget(style_label)
+
+        self.radio_photo = QRadioButton("📷 실제 사진 (Real Photo)")
+        self.radio_art = QRadioButton("🎨 그림 (Illustration / Art)")
+        self.radio_photo.setChecked(True)
+
+        self.style_group = QButtonGroup(self)
+        self.style_group.addButton(self.radio_photo)
+        self.style_group.addButton(self.radio_art)
+
+        style_row.addWidget(self.radio_photo)
+        style_row.addWidget(self.radio_art)
+        style_row.addStretch()
+        left_layout.addLayout(style_row)
+
         # 로고 이미지 선택 (영상 좌측 상단 오버레이)
         logo_row = QHBoxLayout()
         logo_label = QLabel("로고 이미지:")
@@ -676,12 +714,15 @@ class MainWindow(QMainWindow):
         elif "0초" in fade_txt:
             fade_dur = 0.0
 
+        image_style = "photo" if self.radio_photo.isChecked() else "art"
+
         self.worker = AutomationWorker(
             mood, genre, is_inst,
             fade_duration=fade_dur,
             custom_lyrics=custom_lyrics,
             logo_path=logo_path,
-            video_title=video_title
+            video_title=video_title,
+            image_style=image_style
         )
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
