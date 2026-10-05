@@ -32,6 +32,7 @@ class VideoRenderer:
         logo_path: Optional[Path] = None,
         title_path: Optional[Path] = None,
         bottom_image_path: Optional[Path] = None,
+        bottom_image_pos: str = "bottom_right",
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Path:
         """
@@ -41,7 +42,7 @@ class VideoRenderer:
         영상 시작/종료 페이드 효과를 적용하여 1080p FHD MP4 비디오로 렌더링합니다.
         외부 로고 이미지가 지정된 경우 영상 좌측 상단(Top-Left: 35:35)에 오버레이 합성하며,
         영상 제목이 지정된 경우 영상 우측 상단(Top-Right: W-w-35:35)에 오버레이 합성하며,
-        하단 이미지가 지정된 경우 영상 좌측 하단(Bottom-Left: 35:H-h-35)에 오버레이 합성합니다.
+        하단 이미지가 지정된 경우 영상 하단(Bottom-Right: W-w-35:H-h-35 또는 Bottom-Left: 35:H-h-35)에 오버레이 합성합니다.
         """
         output_mp4.parent.mkdir(parents=True, exist_ok=True)
         if total_duration is None or total_duration <= 0:
@@ -57,7 +58,7 @@ class VideoRenderer:
 
         # 페이드 시간이 비활성화되어 있거나 이미지가 1장일 경우 고속 concat 모드
         if fade_duration <= 0 or num_images < 2:
-            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, title_path, bottom_image_path, progress_callback)
+            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, title_path, bottom_image_path, bottom_image_pos, progress_callback)
 
         # MoveEditor-AutoProgram 방식: 오버랩 페이드 시간을 고려한 씬 지속시간 계산
         # N * scene_dur - (N - 1) * fade_duration = total_duration
@@ -138,13 +139,14 @@ class VideoRenderer:
                 )
                 current_v = next_v
 
-            # 좌측 하단 이미지 오버레이 (좌측 35px / 하단 35px 여백)
+            # 하단 이미지 오버레이 (우측 하단: W-w-35:H-h-35, 좌측 하단: 35:H-h-35)
             if has_bottom_image:
                 filter_parts.append(
                     f"[{bottom_image_index}:v]scale=w='min(180,iw)':h='min(80,ih)':force_original_aspect_ratio=decrease[bimg_scaled]"
                 )
+                bpos_coords = "W-w-35:H-h-35" if bottom_image_pos == "bottom_right" else "35:H-h-35"
                 filter_parts.append(
-                    f"[{current_v}][bimg_scaled]overlay=35:H-h-35[vout]"
+                    f"[{current_v}][bimg_scaled]overlay={bpos_coords}[vout]"
                 )
         else:
             filter_parts.append(
@@ -205,7 +207,7 @@ class VideoRenderer:
             # 실패 시 안전하게 concat fallback 시도
             if progress_callback:
                 progress_callback(50, "페이드 필터 오류로 기본 슬라이드 모드로 안전 전환...")
-            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, title_path, progress_callback)
+            return self._render_concat_fallback(image_paths, audio_path, output_mp4, total_duration, logo_path, title_path, bottom_image_path, bottom_image_pos, progress_callback)
 
         if not output_mp4.exists() or output_mp4.stat().st_size == 0:
             raise RuntimeError(f"영상 렌더링 실패: 최종 파일이 생성되지 않았습니다 ({output_mp4.name})")
@@ -224,6 +226,7 @@ class VideoRenderer:
         logo_path: Optional[Path] = None,
         title_path: Optional[Path] = None,
         bottom_image_path: Optional[Path] = None,
+        bottom_image_pos: str = "bottom_right",
         progress_callback: Optional[Callable[[int, str], None]] = None
     ) -> Path:
         """기본 슬라이드쇼 concat fallback 엔진 (로고, 제목, 하단 이미지 오버레이 지원)"""
@@ -288,7 +291,8 @@ class VideoRenderer:
                 current_v = next_v
             if has_bottom_image:
                 filter_parts.append(f"[{bottom_img_idx}:v]scale=w='min(180,iw)':h='min(80,ih)':force_original_aspect_ratio=decrease[bimg]")
-                filter_parts.append(f"[{current_v}][bimg]overlay=35:H-h-35[vout]")
+                bpos_coords = "W-w-35:H-h-35" if bottom_image_pos == "bottom_right" else "35:H-h-35"
+                filter_parts.append(f"[{current_v}][bimg]overlay={bpos_coords}[vout]")
 
             cmd.extend([
                 "-filter_complex", ";".join(filter_parts),

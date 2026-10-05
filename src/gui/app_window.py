@@ -538,14 +538,14 @@ class MainWindow(QMainWindow):
 
         left_layout.addLayout(title_row)
 
-        # 하단 이미지 선택 (영상 좌측 하단 오버레이)
+        # 하단 이미지 선택 (영상 하단 오버레이: 우측 하단 / 좌측 하단)
         bottom_img_row = QHBoxLayout()
         bottom_img_label = QLabel("하단 이미지:")
         bottom_img_label.setFixedWidth(72)
         bottom_img_row.addWidget(bottom_img_label)
 
         self.bottom_img_path_input = QLineEdit()
-        self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 좌측 하단 표시 이미지)")
+        self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 우측 하단 표시 이미지)")
         self.bottom_img_path_input.setReadOnly(True)
         bottom_img_row.addWidget(self.bottom_img_path_input)
 
@@ -560,6 +560,27 @@ class MainWindow(QMainWindow):
         bottom_img_row.addWidget(self.bottom_img_clear_btn)
 
         left_layout.addLayout(bottom_img_row)
+
+        # 하단 이미지 위치 선택 (라디오 버튼: 우측 하단 vs 좌측 하단)
+        bpos_row = QHBoxLayout()
+        bpos_label = QLabel("하단 위치:")
+        bpos_label.setFixedWidth(72)
+        bpos_row.addWidget(bpos_label)
+
+        self.radio_bpos_right = QRadioButton("우측 하단 (기본)")
+        self.radio_bpos_left = QRadioButton("좌측 하단")
+        self.radio_bpos_right.setChecked(True)
+
+        self.bpos_group = QButtonGroup(self)
+        self.bpos_group.addButton(self.radio_bpos_right)
+        self.bpos_group.addButton(self.radio_bpos_left)
+
+        self.radio_bpos_right.toggled.connect(self._on_bpos_toggled)
+
+        bpos_row.addWidget(self.radio_bpos_right)
+        bpos_row.addWidget(self.radio_bpos_left)
+        bpos_row.addStretch()
+        left_layout.addLayout(bpos_row)
 
         left_layout.addSpacing(15)
 
@@ -699,9 +720,10 @@ class MainWindow(QMainWindow):
         self.logo_path_input.clear()
 
     def _select_bottom_img_file(self):
+        pos_text = "우측 하단" if self.radio_bpos_right.isChecked() else "좌측 하단"
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "영상 좌측 하단에 반영할 이미지 선택",
+            f"영상 {pos_text}에 반영할 이미지 선택",
             "",
             "이미지 파일 (*.png *.jpg *.jpeg *.webp *.bmp)"
         )
@@ -710,6 +732,12 @@ class MainWindow(QMainWindow):
 
     def _clear_bottom_img_file(self):
         self.bottom_img_path_input.clear()
+
+    def _on_bpos_toggled(self):
+        if self.radio_bpos_right.isChecked():
+            self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 우측 하단 표시 이미지)")
+        else:
+            self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 좌측 하단 표시 이미지)")
 
     def start_generation(self):
         mood = self.mood_input.toPlainText().strip()
@@ -740,6 +768,7 @@ class MainWindow(QMainWindow):
         logo_path = self.logo_path_input.text().strip()
         video_title = self.title_input.text().strip()
         bottom_img_path = self.bottom_img_path_input.text().strip()
+        bottom_img_pos = "bottom_right" if self.radio_bpos_right.isChecked() else "bottom_left"
 
         # 페이드 시간 파싱
         fade_txt = self.fade_combo.currentText()
@@ -760,7 +789,8 @@ class MainWindow(QMainWindow):
             logo_path=logo_path,
             video_title=video_title,
             image_style=image_style,
-            bottom_image_path=bottom_img_path
+            bottom_image_path=bottom_img_path,
+            bottom_image_pos=bottom_img_pos
         )
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
@@ -821,13 +851,15 @@ class MainWindow(QMainWindow):
         logo_path = self.logo_path_input.text().strip()
         video_title = self.title_input.text().strip()
         bottom_img_path = self.bottom_img_path_input.text().strip()
+        bottom_img_pos = "bottom_right" if self.radio_bpos_right.isChecked() else "bottom_left"
 
         self.worker = EncodingWorker(
             p,
             fade_duration=fade_dur,
             logo_path=logo_path,
             video_title=video_title,
-            bottom_image_path=bottom_img_path
+            bottom_image_path=bottom_img_path,
+            bottom_image_pos=bottom_img_pos
         )
         self.worker.step_signal.connect(self.update_step)
         self.worker.progress_signal.connect(self.update_progress)
