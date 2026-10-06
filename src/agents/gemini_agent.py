@@ -106,6 +106,20 @@ class GeminiPromptAgent:
             "vocal_style": "soulful r&b vocal, emotional male or female falsetto, smooth runs, heartfelt passion, expressive vibrato",
             "description": "soulful and emotional contemporary R&B ballad with warm electric piano chords, smooth slow groove, deep bass, and heartfelt romantic melodies"
         },
+        "Electro House (클럽스타일)": {
+            "primary_tags": "electro house, club edm, dirty bass, festival house, energetic club dance, heavy synth drop, pumping bassline, club banger, four on the floor",
+            "instruments": "pumping four-on-the-floor kick, heavy distorted electro bass, buzzing sawtooth leads, build-up snare rolls, festival synth drops, sidechained pads, vocal chops",
+            "tempo": "126-130 BPM (Club 128 BPM)",
+            "vocal_style": "hypnotic club vocal, energetic dance vocal, high-energy party chant, festival hype phrases, catchy club drop hook",
+            "description": "high-energy festival electro house club banger with pumping four-on-the-floor kick, buzzing aggressive synth bass, massive energetic drops, and infectious club groove"
+        },
+        "Electro House": {
+            "primary_tags": "electro house, club edm, dirty bass, festival house, energetic club dance, heavy synth drop, pumping bassline, club banger, four on the floor",
+            "instruments": "pumping four-on-the-floor kick, heavy distorted electro bass, buzzing sawtooth leads, build-up snare rolls, festival synth drops, sidechained pads, vocal chops",
+            "tempo": "126-130 BPM (Club 128 BPM)",
+            "vocal_style": "hypnotic club vocal, energetic dance vocal, high-energy party chant, festival hype phrases, catchy club drop hook",
+            "description": "high-energy festival electro house club banger with pumping four-on-the-floor kick, buzzing aggressive synth bass, massive energetic drops, and infectious club groove"
+        },
     }
 
     def get_all_free_models(self) -> list:
@@ -136,14 +150,16 @@ class GeminiPromptAgent:
         # 선택된 장르의 프로필 확인 (미등록 장르일 경우 기본 New Age 프로필 적용)
         genre_info = self.GENRE_PROFILES.get(genre)
         if not genre_info:
+            g_lower = genre.lower()
+            if any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
+                genre_info = self.GENRE_PROFILES.get("Electro House (클럽스타일)")
+            elif any(w in g_lower for w in ["발라", "r&b", "rnb"]):
+                genre_info = self.GENRE_PROFILES.get("Ballad R&B")
+        if not genre_info:
             for k, v in self.GENRE_PROFILES.items():
                 if k.lower() in genre.lower() or any(w.lower() in genre.lower() for w in k.split()):
                     genre_info = v
                     break
-        if not genre_info:
-            g_lower = genre.lower()
-            if any(w in g_lower for w in ["발라", "r&b", "rnb"]):
-                genre_info = self.GENRE_PROFILES.get("Ballad R&B")
         if not genre_info:
             genre_info = self.GENRE_PROFILES["New Age / Piano"]
 
@@ -362,14 +378,16 @@ class GeminiPromptAgent:
         """
         genre_info = cls.GENRE_PROFILES.get(genre)
         if not genre_info:
+            g_lower = genre.lower()
+            if any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
+                genre_info = cls.GENRE_PROFILES.get("Electro House (클럽스타일)")
+            elif any(w in g_lower for w in ["발라", "r&b", "rnb"]):
+                genre_info = cls.GENRE_PROFILES.get("Ballad R&B")
+        if not genre_info:
             for k, v in cls.GENRE_PROFILES.items():
                 if k.lower() in genre.lower() or any(w.lower() in genre.lower() for w in k.split()):
                     genre_info = v
                     break
-        if not genre_info:
-            g_lower = genre.lower()
-            if any(w in g_lower for w in ["발라", "r&b", "rnb"]):
-                genre_info = cls.GENRE_PROFILES.get("Ballad R&B")
         if not genre_info:
             genre_info = cls.GENRE_PROFILES["New Age / Piano"]
 
@@ -395,13 +413,16 @@ class GeminiPromptAgent:
     def _smart_fallback_plan(cls, mood: str, genre: str, is_instrumental: bool, custom_lyrics: str = "", image_style: str = "photo") -> dict:
         """Gemini 서버 일시 부하(503) 시에도 제작이 중단되지 않도록 하는 지능형 백업 플래너 (장르별 맞춤 악기 완벽 적용)"""
         is_rock = "rock" in genre.lower()
-        is_electro = any(w in genre.lower() for w in ["electro", "electronic", "edm", "synthwave"])
+        is_house = any(w in genre.lower() for w in ["house", "클럽", "쿨럽"])
+        is_electro = any(w in genre.lower() for w in ["electro", "electronic", "edm", "synthwave"]) and not is_house
         is_kpop = any(w in genre.lower() for w in ["k-pop", "kpop", "korean pop"])
         is_rnb = any(w in genre.lower() for w in ["r&b", "rnb", "ballad", "발라"])
         if is_kpop:
             title = f"K-Pop - Starlight Dance"
         elif is_rnb:
             title = f"Ballad R&B - Soulful Whispers"
+        elif is_house:
+            title = f"Electro House - Midnight Club Anthem"
         elif is_rock:
             title = f"{genre.split('/')[0].strip()} - Electric Anthem"
         elif is_electro:
@@ -411,14 +432,16 @@ class GeminiPromptAgent:
         
         genre_info = cls.GENRE_PROFILES.get(genre)
         if not genre_info:
+            g_lower = genre.lower()
+            if any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
+                genre_info = cls.GENRE_PROFILES.get("Electro House (클럽스타일)")
+            elif any(w in g_lower for w in ["발라", "r&b", "rnb"]):
+                genre_info = cls.GENRE_PROFILES.get("Ballad R&B")
+        if not genre_info:
             for k, v in cls.GENRE_PROFILES.items():
                 if k.lower() in genre.lower() or any(w.lower() in genre.lower() for w in k.split()):
                     genre_info = v
                     break
-        if not genre_info:
-            g_lower = genre.lower()
-            if any(w in g_lower for w in ["발라", "r&b", "rnb"]):
-                genre_info = cls.GENRE_PROFILES.get("Ballad R&B")
         if not genre_info:
             genre_info = cls.GENRE_PROFILES["New Age / Piano"]
 
@@ -440,6 +463,12 @@ class GeminiPromptAgent:
                     f"Soulful contemporary R&B ballad atmosphere, instrumental, smooth slow jam groove, heartfelt melody, no vocals. {tempo_desc}."
                 )
                 suno_style = f"{primary_tags}, instrumental, slow jam, soulful ballad"
+            elif is_house:
+                suno_prompt = (
+                    f"High-energy club {genre_desc}, featuring {inst_desc}. "
+                    f"Pumping festival club atmosphere, instrumental, massive drops, dirty bassline, no vocals. {tempo_desc}."
+                )
+                suno_style = f"{primary_tags}, instrumental, club banger, festival edm"
             elif is_rock or is_electro:
                 genre_type = "electronic club" if is_electro else "rock"
                 anthem_tag = "cyber groove" if is_electro else "driving anthem"
@@ -492,6 +521,25 @@ class GeminiPromptAgent:
                     )
                     vocal_style = genre_info["vocal_style"]
                     suno_style = f"{primary_tags}, {vocal_style}, emotional slow jam"
+                elif is_house:
+                    suno_prompt = (
+                        f"[Verse 1]\n"
+                        f"Bass drum pounding through the club room floor\n"
+                        f"Sweat and lasers, wanting more and more\n"
+                        f"Hands up high as the frequency climbs\n"
+                        f"Lost in the music, leaving thoughts behind\n\n"
+                        f"[Build Up]\n"
+                        f"Feel the tension rising, hear the sirens call\n"
+                        f"Get ready for the drop, let the bass line fall!\n\n"
+                        f"[Drop / Chorus]\n"
+                        f"Jump to the rhythm, electric sound!\n"
+                        f"We ignite the club, shake the underground!\n"
+                        f"Electro house madness all night long!\n\n"
+                        f"[Outro]\n"
+                        f"Keep that club beat alive!"
+                    )
+                    vocal_style = genre_info["vocal_style"]
+                    suno_style = f"{primary_tags}, {vocal_style}, club banger"
                 elif is_electro:
                     suno_prompt = (
                         f"[Verse 1]\n"

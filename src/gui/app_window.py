@@ -444,6 +444,7 @@ class MainWindow(QMainWindow):
             "Acoustic Guitar",
             "Glam Rock",
             "Electro",
+            "Electro House (클럽스타일)",
             "K-Pop",
             "Ballad R&B"
         ])
