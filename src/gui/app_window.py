@@ -515,7 +515,7 @@ class MainWindow(QMainWindow):
         logo_row.addWidget(logo_label)
 
         self.logo_path_input = QLineEdit()
-        self.logo_path_input.setPlaceholderText("선택 안 함 (로고 이미지 사이즈 50x50px)")
+        self.logo_path_input.setPlaceholderText("선택 안 함 (로고 이미지 사이즈 150x150px - 3배 확대)")
         self.logo_path_input.setReadOnly(True)
         logo_row.addWidget(self.logo_path_input)
 
@@ -720,7 +720,7 @@ class MainWindow(QMainWindow):
     def _select_logo_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "영상 좌측 상단에 반영할 로고 이미지 선택 (로고 이미지 사이즈 50x50px)",
+            "영상 좌측 상단에 반영할 로고 이미지 선택 (로고 이미지 사이즈 150x150px - 3배 확대)",
             "",
             "이미지 파일 (*.png *.jpg *.jpeg *.webp *.bmp)"
         )

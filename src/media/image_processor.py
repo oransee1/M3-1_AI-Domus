@@ -210,19 +210,19 @@ class ImageProcessor:
             return None
 
     @staticmethod
-    def prepare_logo(logo_path: Path, output_file: Path, max_width: int = 50, max_height: int = 50) -> Path:
+    def prepare_logo(logo_path: Path, output_file: Path, max_width: int = 150, max_height: int = 150) -> Path:
         """
-        사용자가 지정한 외부 로고 이미지를 1080p FHD 영상 좌측 상단 규격(50x50px)에 맞게
+        사용자가 지정한 외부 로고 이미지를 1080p FHD 영상 좌측 상단 규격(150x150px, 기존 50x50px의 3배 확대 규격)에 맞게
         원본 종횡비를 유지하며 리사이즈하고 투명 알파(RGBA) PNG로 정제합니다.
         """
         output_file.parent.mkdir(parents=True, exist_ok=True)
         img = Image.open(logo_path).convert("RGBA")
         w, h = img.size
 
-        # 가로 및 세로 최대 크기 제한에 맞추어 종횡비 유지 스케일 계산
-        scale = min(max_width / w, max_height / h, 1.0)
-        target_w = max(1, int(w * scale))
-        target_h = max(1, int(h * scale))
+        # 가로 및 세로 최대 크기 제한에 맞추어 종횡비 유지 스케일 계산 (기존 대비 3배 크기 150x150px)
+        scale = min(max_width / w, max_height / h)
+        target_w = max(1, int(round(w * scale)))
+        target_h = max(1, int(round(h * scale)))
 
         resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
         resized.save(output_file, "PNG")

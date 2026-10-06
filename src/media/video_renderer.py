@@ -120,10 +120,10 @@ class VideoRenderer:
             )
             current_v = "v_fade"
 
-            # 좌측 상단 로고 오버레이 (50x50px 규격, 좌측 35px / 상단 35px 여백)
+            # 좌측 상단 로고 오버레이 (150x150px 규격, 좌측 35px / 상단 35px 여백 - 기존 대비 3배 확대)
             if has_logo:
                 filter_parts.append(
-                    f"[{logo_index}:v]scale=w='min(50,iw)':h=-1[logo_scaled]"
+                    f"[{logo_index}:v]scale=w='min(150,iw)':h=-1[logo_scaled]"
                 )
                 next_v = "v_after_logo" if (has_title or has_bottom_image) else "vout"
                 filter_parts.append(
@@ -281,7 +281,7 @@ class VideoRenderer:
             filter_parts = []
             current_v = "0:v"
             if has_logo:
-                filter_parts.append(f"[{logo_idx}:v]scale=w='min(50,iw)':h=-1[logo]")
+                filter_parts.append(f"[{logo_idx}:v]scale=w='min(150,iw)':h=-1[logo]")
                 next_v = "v_tmp1" if (has_title or has_bottom_image) else "vout"
                 filter_parts.append(f"[{current_v}][logo]overlay=35:35[{next_v}]")
                 current_v = next_v

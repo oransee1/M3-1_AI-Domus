@@ -199,8 +199,8 @@ class AutomationWorker(QThread):
             if self.logo_path and Path(self.logo_path).exists():
                 try:
                     prepared_logo = work_dir / "logo_prepared.png"
-                    ImageProcessor.prepare_logo(Path(self.logo_path), prepared_logo, max_width=50, max_height=50)
-                    self.log_signal.emit(f"🖼️ [로고 오버레이] 로고 규격화(50x50px) 완료: {Path(self.logo_path).name} ➜ 영상 좌측 상단에 반영됩니다.")
+                    ImageProcessor.prepare_logo(Path(self.logo_path), prepared_logo, max_width=150, max_height=150)
+                    self.log_signal.emit(f"🖼️ [로고 오버레이] 로고 3배 확대 규격화(150x150px) 완료: {Path(self.logo_path).name} ➜ 영상 좌측 상단에 반영됩니다.")
                 except Exception as e:
                     self.log_signal.emit(f"⚠️ [로고 처리 경고] 로고 로딩 실패 ({e}) - 로고 없이 렌더링을 진행합니다.")
                     prepared_logo = None
@@ -344,8 +344,8 @@ class EncodingWorker(QThread):
             if self.logo_path and Path(self.logo_path).exists():
                 try:
                     prepared_logo = self.project_dir / "logo_prepared.png"
-                    ImageProcessor.prepare_logo(Path(self.logo_path), prepared_logo, max_width=50, max_height=50)
-                    self.log_signal.emit(f"🖼️ [로고 오버레이] 로고 규격화(50x50px) 완료: {Path(self.logo_path).name} ➜ 영상 좌측 상단에 반영됩니다.")
+                    ImageProcessor.prepare_logo(Path(self.logo_path), prepared_logo, max_width=150, max_height=150)
+                    self.log_signal.emit(f"🖼️ [로고 오버레이] 로고 3배 확대 규격화(150x150px) 완료: {Path(self.logo_path).name} ➜ 영상 좌측 상단에 반영됩니다.")
                 except Exception as e:
                     self.log_signal.emit(f"⚠️ [로고 처리 경고] 로고 로딩 실패 ({e}) - 로고 없이 렌더링을 진행합니다.")
                     prepared_logo = None
