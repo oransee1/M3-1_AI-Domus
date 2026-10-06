@@ -14,7 +14,7 @@ from PIL import Image
 
 from src.config import Config, OUTPUT_DIR, ICON_PATH
 from src.media.image_processor import ImageProcessor
-from src.gui.worker import AutomationWorker, EncodingWorker
+from src.gui.worker import AutomationWorker
 
 def get_app_icon() -> QIcon:
     """프로그램 및 작업표시줄 표시용 QIcon 객체를 반환합니다."""
@@ -600,17 +600,6 @@ class MainWindow(QMainWindow):
         self.gen_btn.setObjectName("GenerateBtn")
         self.gen_btn.clicked.connect(self.start_generation)
         left_layout.addWidget(self.gen_btn)
-
-        left_layout.addSpacing(8)
-
-        # 인코딩 엔진 직접 실행 버튼 (기존 세션/에셋 렌더링)
-        self.encode_btn = QPushButton("🎬 프로그램 인코딩 엔진 실행 (기존 작업 렌더링)")
-        self.encode_btn.setStyleSheet(
-            "background-color: #fab387; color: #11111b; font-weight: bold; font-size: 13px; padding: 10px; border-radius: 6px;"
-        )
-        self.encode_btn.clicked.connect(self.start_manual_encoding)
-        left_layout.addWidget(self.encode_btn)
-
         left_layout.addStretch()
         body_layout.addWidget(left_box, 40)
 
@@ -761,7 +750,6 @@ class MainWindow(QMainWindow):
             return
 
         self.gen_btn.setEnabled(False)
-        self.encode_btn.setEnabled(False)
         self.open_folder_btn.setEnabled(False)
         self.play_video_btn.setEnabled(False)
         self.log_console.clear()
@@ -811,74 +799,6 @@ class MainWindow(QMainWindow):
         self.worker.error_signal.connect(self.on_error)
 
         # 렌더링 진행 팝업 창 가동 (실시간 진행시간, 단계, 프로그레스바, 진행율)
-        if not self.progress_dialog:
-            self.progress_dialog = RenderingProgressDialog(self)
-        self.worker.step_signal.connect(self.progress_dialog.update_step)
-        self.worker.progress_signal.connect(self.progress_dialog.update_progress)
-        self.progress_dialog.start_timer()
-        self.progress_dialog.show()
-
-        self.worker.start()
-
-    def start_manual_encoding(self):
-        """기존 프로젝트 세션 폴더를 선택하여 프로그램 내부 인코딩 엔진으로 직접 렌더링"""
-        default_dir = str(OUTPUT_DIR)
-        subdirs = [d for d in OUTPUT_DIR.iterdir() if d.is_dir()] if OUTPUT_DIR.exists() else []
-        if subdirs:
-            subdirs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-            default_dir = str(subdirs[0])
-
-        target_dir = QFileDialog.getExistingDirectory(
-            self,
-            "인코딩 엔진으로 렌더링할 프로젝트 세션 폴더 선택",
-            default_dir
-        )
-        if not target_dir:
-            return
-
-        p = Path(target_dir)
-        if not list(p.glob("*.mp3")):
-            QMessageBox.warning(self, "오디오 파일 없음", f"선택한 폴더에 mp3 파일이 없습니다:\n{target_dir}")
-            return
-
-        self.gen_btn.setEnabled(False)
-        self.encode_btn.setEnabled(False)
-        self.open_folder_btn.setEnabled(False)
-        self.play_video_btn.setEnabled(False)
-        self.log_console.clear()
-        self.progress_bar.setValue(0)
-        self.update_step(4)
-
-        # 페이드 시간 파싱
-        fade_txt = self.fade_combo.currentText()
-        fade_dur = 1.5
-        if "2.0" in fade_txt:
-            fade_dur = 2.0
-        elif "1.0" in fade_txt:
-            fade_dur = 1.0
-        elif "0초" in fade_txt:
-            fade_dur = 0.0
-
-        logo_path = self.logo_path_input.text().strip()
-        video_title = self.title_input.text().strip()
-        bottom_img_path = self.bottom_img_path_input.text().strip()
-        bottom_img_pos = "bottom_right" if self.radio_bpos_right.isChecked() else "bottom_left"
-
-        self.worker = EncodingWorker(
-            p,
-            fade_duration=fade_dur,
-            logo_path=logo_path,
-            video_title=video_title,
-            bottom_image_path=bottom_img_path,
-            bottom_image_pos=bottom_img_pos
-        )
-        self.worker.step_signal.connect(self.update_step)
-        self.worker.progress_signal.connect(self.update_progress)
-        self.worker.log_signal.connect(self.append_log)
-        self.worker.scenes_ready_signal.connect(self.display_scenes)
-        self.worker.finished_signal.connect(self.on_finished)
-        self.worker.error_signal.connect(self.on_error)
-
         if not self.progress_dialog:
             self.progress_dialog = RenderingProgressDialog(self)
         self.worker.step_signal.connect(self.progress_dialog.update_step)
@@ -938,7 +858,6 @@ class MainWindow(QMainWindow):
 
     def on_finished(self, mp4_path: str, mp3_path: str, scenes: list):
         self.gen_btn.setEnabled(True)
-        self.encode_btn.setEnabled(True)
         self.open_folder_btn.setEnabled(True)
         self.play_video_btn.setEnabled(True)
         self.last_mp4 = mp4_path
@@ -956,7 +875,6 @@ class MainWindow(QMainWindow):
 
     def on_error(self, err_msg: str):
         self.gen_btn.setEnabled(True)
-        self.encode_btn.setEnabled(True)
         if self.progress_dialog:
             self.progress_dialog.hide()
         QMessageBox.critical(self, "오류 발생", f"작업 중 오류가 발생했습니다:\n{err_msg}")
