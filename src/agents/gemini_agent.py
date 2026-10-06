@@ -99,6 +99,13 @@ class GeminiPromptAgent:
             "vocal_style": "clear melodic korean vocal, catchy hook, dynamic vocal harmonies, charismatic idol performance, rhythmic delivery",
             "description": "infectious modern K-pop dance track with catchy melodic hooks, punchy upbeat groove, and polished idol production"
         },
+        "Ballad R&B": {
+            "primary_tags": "r&b ballad, contemporary r&b, slow jam, soulful, emotional ballad, smooth r&b, heartfelt, melodic groove",
+            "instruments": "warm rhodes electric piano, emotive acoustic grand piano, deep 808 sub bass, smooth slow snap snare, mellow electric guitar, lush string pads, gentle vocal ad-libs",
+            "tempo": "65-75 BPM",
+            "vocal_style": "soulful r&b vocal, emotional male or female falsetto, smooth runs, heartfelt passion, expressive vibrato",
+            "description": "soulful and emotional contemporary R&B ballad with warm electric piano chords, smooth slow groove, deep bass, and heartfelt romantic melodies"
+        },
     }
 
     def get_all_free_models(self) -> list:
@@ -133,6 +140,10 @@ class GeminiPromptAgent:
                 if k.lower() in genre.lower() or any(w.lower() in genre.lower() for w in k.split()):
                     genre_info = v
                     break
+        if not genre_info:
+            g_lower = genre.lower()
+            if any(w in g_lower for w in ["발라", "r&b", "rnb"]):
+                genre_info = self.GENRE_PROFILES.get("Ballad R&B")
         if not genre_info:
             genre_info = self.GENRE_PROFILES["New Age / Piano"]
 
@@ -356,6 +367,10 @@ class GeminiPromptAgent:
                     genre_info = v
                     break
         if not genre_info:
+            g_lower = genre.lower()
+            if any(w in g_lower for w in ["발라", "r&b", "rnb"]):
+                genre_info = cls.GENRE_PROFILES.get("Ballad R&B")
+        if not genre_info:
             genre_info = cls.GENRE_PROFILES["New Age / Piano"]
 
         primary_tags = genre_info["primary_tags"]
@@ -382,8 +397,11 @@ class GeminiPromptAgent:
         is_rock = "rock" in genre.lower()
         is_electro = any(w in genre.lower() for w in ["electro", "electronic", "edm", "synthwave"])
         is_kpop = any(w in genre.lower() for w in ["k-pop", "kpop", "korean pop"])
+        is_rnb = any(w in genre.lower() for w in ["r&b", "rnb", "ballad", "발라"])
         if is_kpop:
             title = f"K-Pop - Starlight Dance"
+        elif is_rnb:
+            title = f"Ballad R&B - Soulful Whispers"
         elif is_rock:
             title = f"{genre.split('/')[0].strip()} - Electric Anthem"
         elif is_electro:
@@ -397,6 +415,10 @@ class GeminiPromptAgent:
                 if k.lower() in genre.lower() or any(w.lower() in genre.lower() for w in k.split()):
                     genre_info = v
                     break
+        if not genre_info:
+            g_lower = genre.lower()
+            if any(w in g_lower for w in ["발라", "r&b", "rnb"]):
+                genre_info = cls.GENRE_PROFILES.get("Ballad R&B")
         if not genre_info:
             genre_info = cls.GENRE_PROFILES["New Age / Piano"]
 
@@ -412,6 +434,12 @@ class GeminiPromptAgent:
                     f"Modern K-pop dance atmosphere, instrumental, catchy hooks, punchy groove, no vocals. {tempo_desc}."
                 )
                 suno_style = f"{primary_tags}, instrumental, dance pop"
+            elif is_rnb:
+                suno_prompt = (
+                    f"Emotional and soulful {genre_desc}, featuring {inst_desc}. "
+                    f"Soulful contemporary R&B ballad atmosphere, instrumental, smooth slow jam groove, heartfelt melody, no vocals. {tempo_desc}."
+                )
+                suno_style = f"{primary_tags}, instrumental, slow jam, soulful ballad"
             elif is_rock or is_electro:
                 genre_type = "electronic club" if is_electro else "rock"
                 anthem_tag = "cyber groove" if is_electro else "driving anthem"
@@ -447,6 +475,23 @@ class GeminiPromptAgent:
                     )
                     vocal_style = genre_info["vocal_style"]
                     suno_style = f"{primary_tags}, {vocal_style}, catchy dance"
+                elif is_rnb:
+                    suno_prompt = (
+                        f"[Verse 1]\n"
+                        f"희미한 달빛 아래 번지는 네 생각\n"
+                        f"조용히 차오르는 밤하늘 별처럼\n"
+                        f"숨길 수 없는 내 맘 떨리는 이 숨결\n"
+                        f"네 곁에 영원히 머물고 싶은 밤\n\n"
+                        f"[Chorus]\n"
+                        f"Baby you are my everything\n"
+                        f"가슴 깊이 스며드는 너의 목소리\n"
+                        f"시간이 멈춘 듯한 이 순간 속에서\n"
+                        f"너만을 향해 부르는 R&B 멜로디\n\n"
+                        f"[Outro]\n"
+                        f"Only you, forever in my heart..."
+                    )
+                    vocal_style = genre_info["vocal_style"]
+                    suno_style = f"{primary_tags}, {vocal_style}, emotional slow jam"
                 elif is_electro:
                     suno_prompt = (
                         f"[Verse 1]\n"

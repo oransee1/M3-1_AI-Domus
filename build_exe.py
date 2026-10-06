@@ -34,6 +34,7 @@ def build():
         "--hidden-import=google.genai",
         "--hidden-import=imageio_ffmpeg",
         "--hidden-import=PIL",
+        "--hidden-import=numpy",
         str(main_script)
     ]
 
