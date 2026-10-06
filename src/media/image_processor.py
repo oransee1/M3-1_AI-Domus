@@ -8,13 +8,17 @@ class ImageProcessor:
     def _detect_grid_spans(prof_mean: np.ndarray, prof_std: np.ndarray, length: int) -> List[tuple]:
         """
         스토리보드 3x3 이미지의 외곽 테두리(Border) 및 내부 격자 분할선(Gutter)을 지능적으로 감지하여
-        블랙바 및 불필요한 테두리가 완전히 제거된 순수 콘텐츠 3구간의 [start, end) 좌표를 반환합니다.
+        블랙바, 화이트바 및 불필요한 테두리가 완전히 제거된 순수 콘텐츠 3구간의 [start, end) 좌표를 반환합니다.
+        어두운 테두리(검정/어두운 회색)와 밝은 테두리(흰색/연회색), 단색 분할선 모두 완벽하게 식별합니다.
         """
         center_med = float(np.median(prof_mean[int(length * 0.2):int(length * 0.8)]))
         thresh_dark = min(45.0, center_med * 0.45)
+        thresh_light = 235.0
 
         def is_gutter(idx: int) -> bool:
-            return bool(prof_mean[idx] <= thresh_dark or (prof_std[idx] <= 5.0 and prof_mean[idx] <= 50.0))
+            m = prof_mean[idx]
+            s = prof_std[idx]
+            return bool(m <= thresh_dark or m >= thresh_light or s <= 8.0)
 
         # 외곽 시작 테두리 (전체 길이의 최대 12%까지 검색)
         s0 = 0
@@ -27,9 +31,17 @@ class ImageProcessor:
             s3 -= 1
         s3 += 1
 
-        # 1차 내부 분할선 (1/3 지점 부근: 28% ~ 38% 검색)
+        # 1차 내부 분할선 (1/3 지점 부근: 28% ~ 38% 검색 - 표준편차 최소 지점 우선 탐색)
         win1_s, win1_e = int(length * 0.28), int(length * 0.38)
-        v1 = win1_s + int(np.argmin(prof_mean[win1_s:win1_e]))
+        v1 = win1_s + int(np.argmin(prof_std[win1_s:win1_e]))
+        if not is_gutter(v1):
+            v1_dark = win1_s + int(np.argmin(prof_mean[win1_s:win1_e]))
+            v1_light = win1_s + int(np.argmax(prof_mean[win1_s:win1_e]))
+            if is_gutter(v1_dark):
+                v1 = v1_dark
+            elif is_gutter(v1_light):
+                v1 = v1_light
+
         if is_gutter(v1):
             d1_left = v1
             while d1_left > win1_s and is_gutter(d1_left - 1):
@@ -41,9 +53,17 @@ class ImageProcessor:
             d1_left = int(length / 3)
             d1_right = d1_left
 
-        # 2차 내부 분할선 (2/3 지점 부근: 62% ~ 72% 검색)
+        # 2차 내부 분할선 (2/3 지점 부근: 62% ~ 72% 검색 - 표준편차 최소 지점 우선 탐색)
         win2_s, win2_e = int(length * 0.62), int(length * 0.72)
-        v2 = win2_s + int(np.argmin(prof_mean[win2_s:win2_e]))
+        v2 = win2_s + int(np.argmin(prof_std[win2_s:win2_e]))
+        if not is_gutter(v2):
+            v2_dark = win2_s + int(np.argmin(prof_mean[win2_s:win2_e]))
+            v2_light = win2_s + int(np.argmax(prof_mean[win2_s:win2_e]))
+            if is_gutter(v2_dark):
+                v2 = v2_dark
+            elif is_gutter(v2_light):
+                v2 = v2_light
+
         if is_gutter(v2):
             d2_left = v2
             while d2_left > win2_s and is_gutter(d2_left - 1):
