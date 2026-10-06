@@ -139,10 +139,10 @@ class VideoRenderer:
                 )
                 current_v = next_v
 
-            # 하단 이미지 오버레이 (우측 하단: W-w-35:H-h-35, 좌측 하단: 35:H-h-35)
+            # 하단 이미지 오버레이 (우측 하단: W-w-35:H-h-35, 좌측 하단: 35:H-h-35 - 기존 대비 1.5배 확대 270x120px)
             if has_bottom_image:
                 filter_parts.append(
-                    f"[{bottom_image_index}:v]scale=w='min(180,iw)':h='min(80,ih)':force_original_aspect_ratio=decrease[bimg_scaled]"
+                    f"[{bottom_image_index}:v]scale=w='min(270,iw)':h='min(120,ih)':force_original_aspect_ratio=decrease[bimg_scaled]"
                 )
                 bpos_coords = "W-w-35:H-h-35" if bottom_image_pos == "bottom_right" else "35:H-h-35"
                 filter_parts.append(
@@ -290,7 +290,7 @@ class VideoRenderer:
                 filter_parts.append(f"[{current_v}][{title_idx}:v]overlay=W-w-35:35[{next_v}]")
                 current_v = next_v
             if has_bottom_image:
-                filter_parts.append(f"[{bottom_img_idx}:v]scale=w='min(180,iw)':h='min(80,ih)':force_original_aspect_ratio=decrease[bimg]")
+                filter_parts.append(f"[{bottom_img_idx}:v]scale=w='min(270,iw)':h='min(120,ih)':force_original_aspect_ratio=decrease[bimg]")
                 bpos_coords = "W-w-35:H-h-35" if bottom_image_pos == "bottom_right" else "35:H-h-35"
                 filter_parts.append(f"[{current_v}][bimg]overlay={bpos_coords}[vout]")
 

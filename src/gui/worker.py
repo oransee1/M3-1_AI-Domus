@@ -222,9 +222,9 @@ class AutomationWorker(QThread):
             if self.bottom_image_path and Path(self.bottom_image_path).exists():
                 try:
                     prepared_bottom_image = work_dir / "bottom_image_prepared.png"
-                    ImageProcessor.prepare_bottom_image(Path(self.bottom_image_path), prepared_bottom_image, max_width=180, max_height=80)
+                    ImageProcessor.prepare_bottom_image(Path(self.bottom_image_path), prepared_bottom_image, max_width=270, max_height=120)
                     pos_kor = "우측 하단" if self.bottom_image_pos == "bottom_right" else "좌측 하단"
-                    self.log_signal.emit(f"🖼️ [하단 이미지 오버레이] 이미지 규격화 완료: {Path(self.bottom_image_path).name} ➜ 영상 {pos_kor}에 반영됩니다.")
+                    self.log_signal.emit(f"🖼️ [하단 이미지 오버레이] 하단 이미지 1.5배 확대 규격화(270x120px) 완료: {Path(self.bottom_image_path).name} ➜ 영상 {pos_kor}에 반영됩니다.")
                 except Exception as e:
                     self.log_signal.emit(f"⚠️ [하단 이미지 경고] 이미지 로딩 실패 ({e}) - 이미지 없이 렌더링을 진행합니다.")
                     prepared_bottom_image = None
@@ -367,9 +367,9 @@ class EncodingWorker(QThread):
             if self.bottom_image_path and Path(self.bottom_image_path).exists():
                 try:
                     prepared_bottom_image = self.project_dir / "bottom_image_prepared.png"
-                    ImageProcessor.prepare_bottom_image(Path(self.bottom_image_path), prepared_bottom_image, max_width=180, max_height=80)
+                    ImageProcessor.prepare_bottom_image(Path(self.bottom_image_path), prepared_bottom_image, max_width=270, max_height=120)
                     pos_kor = "우측 하단" if self.bottom_image_pos == "bottom_right" else "좌측 하단"
-                    self.log_signal.emit(f"🖼️ [하단 이미지 오버레이] 이미지 규격화 완료: {Path(self.bottom_image_path).name} ➜ 영상 {pos_kor}에 반영됩니다.")
+                    self.log_signal.emit(f"🖼️ [하단 이미지 오버레이] 하단 이미지 1.5배 확대 규격화(270x120px) 완료: {Path(self.bottom_image_path).name} ➜ 영상 {pos_kor}에 반영됩니다.")
                 except Exception as e:
                     self.log_signal.emit(f"⚠️ [하단 이미지 경고] 이미지 로딩 실패 ({e}) - 이미지 없이 렌더링을 진행합니다.")
                     prepared_bottom_image = None

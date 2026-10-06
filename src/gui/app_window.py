@@ -556,7 +556,7 @@ class MainWindow(QMainWindow):
         bottom_img_row.addWidget(bottom_img_label)
 
         self.bottom_img_path_input = QLineEdit()
-        self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 우측 하단 표시 이미지)")
+        self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 우측 하단 표시 이미지 - 1.5배 확대)")
         self.bottom_img_path_input.setReadOnly(True)
         bottom_img_row.addWidget(self.bottom_img_path_input)
 
@@ -723,7 +723,7 @@ class MainWindow(QMainWindow):
         pos_text = "우측 하단" if self.radio_bpos_right.isChecked() else "좌측 하단"
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            f"영상 {pos_text}에 반영할 이미지 선택",
+            f"영상 {pos_text}에 반영할 이미지 선택 (1.5배 확대 렌더링)",
             "",
             "이미지 파일 (*.png *.jpg *.jpeg *.webp *.bmp)"
         )
@@ -735,9 +735,9 @@ class MainWindow(QMainWindow):
 
     def _on_bpos_toggled(self):
         if self.radio_bpos_right.isChecked():
-            self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 우측 하단 표시 이미지)")
+            self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 우측 하단 표시 이미지 - 1.5배 확대)")
         else:
-            self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 좌측 하단 표시 이미지)")
+            self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 좌측 하단 표시 이미지 - 1.5배 확대)")
 
     def start_generation(self):
         mood = self.mood_input.toPlainText().strip()
