@@ -17,6 +17,9 @@ output/
 *.png
 *.jpg
 *.jpeg
+!icon.png
+!images/
+!images/**
 
 # PyInstaller build files
 build/
