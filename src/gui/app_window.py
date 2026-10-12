@@ -782,8 +782,31 @@ class MainWindow(QMainWindow):
             )
             return
 
+        # 1. PyQt6 지원 Python 인터프리터 자동 탐색
+        project_root = Path(__file__).resolve().parent.parent.parent
+        candidates = [
+            sys.executable,
+            str(project_root / ".venv" / "Scripts" / "python.exe"),
+            r"C:\Users\DiCiA\anaconda3\envs\Codyssey_AI-Step2_64bit\python.exe",
+        ]
+
+        python_exe = sys.executable
+        for cand in candidates:
+            if cand and Path(cand).exists():
+                try:
+                    res = subprocess.run(
+                        [cand, "-c", "import PyQt6"],
+                        capture_output=True,
+                        timeout=2
+                    )
+                    if res.returncode == 0:
+                        python_exe = cand
+                        break
+                except Exception:
+                    pass
+
         try:
-            # 이미 실행 중인 프로세스가 살아있는 경우 알림 및 중복 실행 방지
+            # 2. 이미 실행 중인 프로세스가 살아있는 경우 알림 및 중복 실행 방지
             if self.thumbnail_process and self.thumbnail_process.poll() is None:
                 self.append_log("ℹ️ 유튜브 썸네일 제작 및 업로드 창이 이미 실행 중입니다.")
                 QMessageBox.information(
@@ -793,10 +816,38 @@ class MainWindow(QMainWindow):
                 )
                 return
 
+            log_file = designer_dir / "thumbnail_designer.log"
+            log_fp = open(log_file, "a", encoding="utf-8")
+
             self.thumbnail_process = subprocess.Popen(
-                [sys.executable, str(launcher_script)],
-                cwd=str(designer_dir)
+                [python_exe, str(launcher_script)],
+                cwd=str(designer_dir),
+                stdout=log_fp,
+                stderr=log_fp
             )
+
+            # 프로세스 초기 크래시 검사 (0.6초 대기)
+            time.sleep(0.6)
+            exit_code = self.thumbnail_process.poll()
+            if exit_code is not None:
+                log_fp.close()
+                err_text = ""
+                if log_file.exists():
+                    try:
+                        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+                            lines = f.readlines()
+                            err_text = "".join(lines[-15:])
+                    except Exception:
+                        pass
+                self.thumbnail_process = None
+                self.append_log(f"❌ [유튜브 썸네일] 실행 실패 (종료 코드: {exit_code})\n{err_text}")
+                QMessageBox.critical(
+                    self,
+                    "실행 오류",
+                    f"유튜브 썸네일 디자이너 실행 중 오류가 발생했습니다 (종료 코드: {exit_code}):\n\n{err_text}"
+                )
+                return
+
             self.append_log(f"🎨 [유튜브 썸네일] 디자이너 새 창이 성공적으로 실행되었습니다 (PID: {self.thumbnail_process.pid})")
         except Exception as e:
             QMessageBox.critical(
