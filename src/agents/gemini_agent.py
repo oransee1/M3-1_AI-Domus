@@ -193,19 +193,19 @@ class GeminiPromptAgent:
             style_instruction = (
                 "- [ARTWORK / ILLUSTRATION ONLY]: The style MUST be an emotive, aesthetically captivating artistic illustration or digital painting (such as painterly scenery, soft watercolor textures, cinematic anime background scenery inspired by Studio Ghibli or Makoto Shinkai, warm pastel tones). "
                 "NEVER generate real-life camera photographs or stock photos. "
-                "Always include negative constraints: 'artistic digital painting, aesthetic illustration, painterly textures, 4K UHD, scenic environment only, no people, no humans, no person, no woman, no man, no silhouette, absolutely no real photograph, no camera photo, no realistic photography'."
+                "Always include negative constraints: 'artistic digital painting, aesthetic illustration, painterly textures, 4K UHD, scenic environment only, borderless, full bleed, no people, no humans, no person, no woman, no man, no silhouette, no text, no words, no subtitles, no captions, no typography, no title, no letters, no watermark, no logo, no frame, no border, no white borders, no picture frame, absolutely no real photograph, no camera photo, no realistic photography'."
             )
-            image_prompt_start = "3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, beautiful aesthetic illustration and painterly artwork..."
-            image_prompt_end = "artistic digital painting, vibrant aesthetic illustration, painterly textures, 4K UHD, scenic environment only, no people, no humans, no person, no woman, no man, no silhouette, absolutely no real photograph, no camera photo, no realistic photography."
+            image_prompt_start = "3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, borderless full bleed, beautiful aesthetic illustration and painterly artwork..."
+            image_prompt_end = "artistic digital painting, vibrant aesthetic illustration, painterly textures, 4K UHD, scenic environment only, borderless full bleed, no people, no humans, no person, no woman, no man, no silhouette, no text, no words, no subtitles, no captions, no typography, no title, no letters, no watermark, no logo, no frame, no border, no white borders, no picture frame, absolutely no real photograph, no camera photo, no realistic photography."
             visual_guideline_style = "1. Visual Style: Beautiful aesthetic illustration / painterly artwork (NO real photograph, NO camera photo)."
         else:
             style_instruction = (
                 "- [REAL PHOTOGRAPHY ONLY]: The style MUST be 100% authentic, photorealistic real-life photography shot on a professional 35mm DSLR camera (f/1.8, natural lighting, realistic textures, authentic depth of field). "
                 "NEVER generate paintings, illustrations, drawings, anime, cartoons, Ghibli, sketches, or digital art. "
-                "Always include negative constraints: 'real photograph, authentic photography, absolutely no illustration, no anime, no painting, no drawing, no cartoon'."
+                "Always include negative constraints: 'real photograph, authentic photography, borderless, full bleed, scenic nature only, no people, no humans, no person, no woman, no man, no silhouette, no text, no words, no subtitles, no captions, no typography, no title, no letters, no watermark, no logo, no frame, no border, no white borders, no picture frame, absolutely no illustration, no anime, no painting, no drawing, no cartoon'."
             )
-            image_prompt_start = "3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, ultra-detailed authentic photography..."
-            image_prompt_end = "shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, real photograph, scenic nature only, no people, no humans, no person, no woman, no man, no silhouette, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
+            image_prompt_start = "3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, borderless full bleed, ultra-detailed authentic photography..."
+            image_prompt_end = "shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, real photograph, scenic nature only, borderless full bleed, no people, no humans, no person, no woman, no man, no silhouette, no text, no words, no subtitles, no captions, no typography, no title, no letters, no watermark, no logo, no frame, no border, no white borders, no picture frame, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
             visual_guideline_style = "1. Photography Style: 100% Real authentic photograph (NO illustration, NO anime, NO digital painting, NO cartoon)."
 
         system_instruction = (
@@ -221,13 +221,18 @@ class GeminiPromptAgent:
             "- [STRICTLY NO PEOPLE / SCENERY & NATURE ONLY]: NEVER include any people, persons, human figures, characters, faces, walkers, crowds, or silhouettes in any scene. "
             "Focus 100% on pure scenic beauty: breathtaking natural landscapes, peaceful outdoor walking paths covered in fallen autumn leaves, sunbeams through tree branches, serene empty park benches, cozy indoor cafe tables with steaming coffee, rainy window views, glowing evening lanterns. "
             "Every scene must be a tranquil, unpopulated environment. Always explicitly include negative constraints: 'no people, no humans, no person, no woman, no man, no silhouette, no crowd'.\n"
+            "- [ABSOLUTELY NO TEXT, NO SUBTITLES, NO CAPTIONS, NO FRAMES, NO BORDERS (STRICT RULE)]: "
+            "NEVER include any text, subtitles, captions, titles, words, letters, typography, watermarks, logos, or signage in the images. "
+            "NEVER include any borders, frames, white borders, picture frames, photo borders, inner margins, or decorative framing around or inside scenes. "
+            "Every scene MUST be 100% borderless, full-bleed, edge-to-edge pure visual scenery. "
+            "DO NOT write scene title labels like 'Panel 1: Scene Title' or 'Scene 1: Title' in the image_prompt because AI image models render those titles as literal text/subtitles on the image! Simply describe the visual landscape elements directly without any title headers or quotes.\n"
             "- [CONSISTENCY]: All 9 scenes must share identical visual style, seamless color grading, and scenery consistency.\n\n"
             "Respond ONLY with a valid JSON object matching this schema:\n"
             "{\n"
             '  "title": "English or Korean poetic title",\n'
             f'  "suno_prompt": "{suno_prompt_rule}",\n'
             f'  "suno_style": "{suno_style_rule}",\n'
-            f'  "image_prompt": "Prompt for generating a 3x3 grid (9 distinct sequential scenes) storyboard in 4K resolution (3840x2160). Must begin with \'{image_prompt_start}\'. Describe the scenic details, lighting, and mood. MUST NOT have any people or human figures. Conclude with: \'{image_prompt_end}\'"\n'
+            f'  "image_prompt": "Prompt for generating a 3x3 grid (9 distinct sequential scenes) storyboard in 4K resolution (3840x2160). Must begin with \'{image_prompt_start}\'. Describe the scenic details, lighting, and mood. MUST NOT have any people or human figures. MUST NOT have any text, subtitles, frames, or borders. Conclude with: \'{image_prompt_end}\'"\n'
             "}"
         )
 
@@ -239,7 +244,8 @@ class GeminiPromptAgent:
             f"- Mode: {'Instrumental (Pure BGM, No Vocals)' if is_instrumental else 'Vocal Song (With Lyrics)'}{lyrics_info}\n\n"
             f"Mandatory Visual Guidelines:\n"
             f"{visual_guideline_style}\n"
-            f"2. NO People / Human Figures: Strictly scenery, nature, landscape, or environment ONLY (NO humans, NO people, NO characters, NO silhouettes).\n\n"
+            f"2. NO People / Human Figures: Strictly scenery, nature, landscape, or environment ONLY (NO humans, NO people, NO characters, NO silhouettes).\n"
+            f"3. STRICTLY NO Text / NO Subtitles / NO Frames / NO Borders: 100% borderless, edge-to-edge full bleed, clean scenery ONLY. Absolutely NO words, NO subtitles, NO captions, NO typography, NO watermark, NO picture frames, NO white borders, NO margins.\n\n"
             f"Generate the cohesive multimedia creative plan in JSON format."
         )
 
@@ -309,9 +315,16 @@ class GeminiPromptAgent:
     def _enforce_style_and_no_people(prompt: str, image_style: str = "photo") -> str:
         """
         나노 바나나 프롬프트가 사용자가 선택한 유형('실제 사진' 또는 '그림')과
-        '등장 인물 배제(No People/Scenery Only)' 원칙에 100% 부합하도록 정제 및 제약조건을 강제 보강합니다.
+        '등장 인물 배제(No People/Scenery Only)' 및 '자막/프레임 완전 배제(No Text/No Frame/Borderless)' 원칙에 100% 부합하도록 정제 및 제약조건을 강제 보강합니다.
         """
         cleaned = prompt
+
+        # 1. 씬 라벨/제목 헤더 및 프레임/자막 유발 키워드 선제적 제거 (인공지능 모델의 자막/테두리 렌더링 원천 차단)
+        cleaned = re.sub(r"(?i)\b(?:panel|scene|frame|shot)\s*\d+\s*[:\-]\s*", "", cleaned)
+        cleaned = re.sub(r"(?i)\b(?:title card|with title|with subtitle|with frame|photo frame|picture frame|white border|white frame|framed)\b", "", cleaned)
+
+        # 공통 자막/프레임/테두리 원천 차단 네거티브 키워드
+        no_text_frame_guard = "borderless, full bleed, no text, no words, no subtitles, no captions, no typography, no title, no letters, no watermark, no logo, no frame, no border, no white borders, no picture frame"
 
         if image_style == "art":
             # [그림 모드]
@@ -336,11 +349,13 @@ class GeminiPromptAgent:
             cleaned = re.sub(r"(?<!no\s)(?<!not\s)(?<!without\s)\b(a\s+)?(korean\s+)?(woman|man|girl|boy|person|figure|character|couple|people)\b", "peaceful landscape", cleaned, flags=re.IGNORECASE)
             cleaned = re.sub(r"(?<!no\s)(?<!not\s)(?<!without\s)\b(her|his)\s+(hair|hands|eyes|face|fashion|coat|scarf)\b", "warm artistic lighting", cleaned, flags=re.IGNORECASE)
 
-            # 3. 그림 모드 네거티브 및 무인물 제약 보강
+            # 3. 그림 모드 네거티브 및 무인물 / 무자막 / 무프레임 제약 보강
             if "no people" not in cleaned.lower():
-                cleaned += ", peaceful scenery, empty tranquil environment, no people, no humans, no person, no woman, no man, no silhouette, no crowd, artistic digital painting, aesthetic illustration, 4K UHD, absolutely no real photograph, no camera photo."
+                cleaned += f", peaceful scenery, empty tranquil environment, no people, no humans, no person, no woman, no man, no silhouette, no crowd, {no_text_frame_guard}, artistic digital painting, aesthetic illustration, 4K UHD, absolutely no real photograph, no camera photo."
             elif "no real photograph" not in cleaned.lower():
-                cleaned += ", artistic digital painting, aesthetic illustration, 4K UHD, absolutely no real photograph, no camera photo."
+                cleaned += f", {no_text_frame_guard}, artistic digital painting, aesthetic illustration, 4K UHD, absolutely no real photograph, no camera photo."
+            elif "no text" not in cleaned.lower() or "no frame" not in cleaned.lower():
+                cleaned += f", {no_text_frame_guard}."
 
         else:
             # [실제 사진 모드]
@@ -362,11 +377,13 @@ class GeminiPromptAgent:
             cleaned = re.sub(r"(?<!no\s)(?<!not\s)(?<!without\s)\b(a\s+)?(realistic\s+)?(korean\s+)?(woman|man|girl|boy|person|figure|character|couple|people)\b", "peaceful landscape", cleaned, flags=re.IGNORECASE)
             cleaned = re.sub(r"(?<!no\s)(?<!not\s)(?<!without\s)\b(her|his)\s+(hair|hands|eyes|face|fashion|coat|scarf)\b", "warm natural sunlight", cleaned, flags=re.IGNORECASE)
 
-            # 3. 'no people' 및 실사 네거티브 제약 강제 보강
+            # 3. 'no people' 및 실사 네거티브 / 무자막 / 무프레임 제약 강제 보강
             if "no people" not in cleaned.lower():
-                cleaned += ", tranquil scenery, pure nature, empty peaceful environment, no people, no humans, no person, no woman, no man, no silhouette, no crowd, real authentic photograph, shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
+                cleaned += f", tranquil scenery, pure nature, empty peaceful environment, no people, no humans, no person, no woman, no man, no silhouette, no crowd, {no_text_frame_guard}, real authentic photograph, shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
             elif "no illustration" not in cleaned.lower():
-                cleaned += ", real authentic photograph, shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
+                cleaned += f", {no_text_frame_guard}, real authentic photograph, shot on professional 35mm camera, photorealistic, lifelike textures, 4K UHD, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
+            elif "no text" not in cleaned.lower() or "no frame" not in cleaned.lower():
+                cleaned += f", {no_text_frame_guard}."
 
         return cleaned
 
@@ -594,19 +611,19 @@ class GeminiPromptAgent:
         
         if image_style == "art":
             image_prompt = (
-                f"3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, beautiful aesthetic illustration and painterly artwork. "
+                f"3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, borderless full bleed, beautiful aesthetic illustration and painterly artwork. "
                 f"Cinematic artistic painting of {mood}. Breathtaking pure nature and peaceful outdoor scenery, warm glowing light, vibrant autumn foliage, empty park paths, "
                 f"quiet wooden bench, sunbeams through trees, highly consistent artistic illustration style and atmosphere across all 9 panels. "
                 f"Artistic digital painting, watercolor details, 4K UHD, painterly textures, "
-                f"scenic landscape only, no people, no humans, no person, no woman, no man, no silhouette, absolutely no real photograph, no camera photo, no realistic photography."
+                f"scenic landscape only, borderless full bleed, no people, no humans, no person, no woman, no man, no silhouette, no text, no words, no subtitles, no captions, no typography, no title, no letters, no watermark, no logo, no frame, no border, no white borders, no picture frame, absolutely no real photograph, no camera photo, no realistic photography."
             )
         else:
             image_prompt = (
-                f"3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, ultra-detailed authentic photography. "
+                f"3x3 grid storyboard, 9 sequential cinematic scenes, each scene in 16:9 widescreen ratio, 4K resolution, borderless full bleed, ultra-detailed authentic photography. "
                 f"Cinematic realistic landscape photograph of {mood}. Breathtaking pure nature and outdoor scenery, warm golden hour sunlight, colorful autumn foliage, empty park paths, "
                 f"quiet wooden bench, sunbeams through trees, highly consistent photography and atmosphere across all 9 panels. "
                 f"Shot on 35mm DSLR camera, f/2.8, award-winning real photograph, 4K UHD, photorealistic textures, "
-                f"scenic landscape only, no people, no humans, no person, no woman, no man, no silhouette, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
+                f"scenic landscape only, borderless full bleed, no people, no humans, no person, no woman, no man, no silhouette, no text, no words, no subtitles, no captions, no typography, no title, no letters, no watermark, no logo, no frame, no border, no white borders, no picture frame, absolutely no illustration, no anime, no painting, no drawing, no cartoon."
             )
         
         return {

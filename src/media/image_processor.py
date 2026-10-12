@@ -135,12 +135,18 @@ class ImageProcessor:
             scene_img = Image.open(sp).convert("RGB")
             sw, sh = scene_img.size
 
+            # 미세 외곽 분할선이나 테두리 잔여물(1~2px 거터)을 완벽 차단하기 위해 씬 이미지 외곽을 1% 안전 인셋 크롭
+            inset_x = max(1, int(round(sw * 0.01)))
+            inset_y = max(1, int(round(sh * 0.01)))
+            scene_clean = scene_img.crop((inset_x, inset_y, sw - inset_x, sh - inset_y))
+            scw, sch = scene_clean.size
+
             # 모든 씬 이미지를 1920x1080 전체 화면에 가득 채우는 풀스크린 시네마틱 구도 (Scale-to-Fill)
             # 검은 여백(블랙바)이나 위치 쏠림 없이 모든 씬이 화면 중앙 동일 위치에서 꽉 찬 16:9 화면으로 출력
-            scale = max(width / sw, height / sh)
-            nw = int(round(sw * scale))
-            nh = int(round(sh * scale))
-            resized = scene_img.resize((nw, nh), Image.Resampling.LANCZOS)
+            scale = max(width / scw, height / sch)
+            nw = int(round(scw * scale))
+            nh = int(round(sch * scale))
+            resized = scene_clean.resize((nw, nh), Image.Resampling.LANCZOS)
             left = (nw - width) // 2
             top = (nh - height) // 2
             frame = resized.crop((left, top, left + width, top + height))

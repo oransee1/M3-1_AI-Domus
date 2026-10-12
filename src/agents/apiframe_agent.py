@@ -54,9 +54,18 @@ class ApiframeClient:
         """
         Nano Banana 2 초고화질 4K 이미지 생성을 요청하고 jobId를 반환합니다.
         각 씬 16:9 비율 9장 및 전체 4K(3840x2160) 고해상도 생성을 위해 nanoBananaParams를 적용합니다.
+        자막(텍스트), 프레임(테두리), 워터마크가 원천 배제되도록 네거티브 가드를 엄격히 보장합니다.
         """
         if not self.nano_key:
             raise ValueError("Apiframe Nano Banana API 키가 설정되지 않았습니다.")
+
+        # 자막/텍스트 및 프레임/테두리 원천 배제 강제 보장 가드
+        neg_guard = "borderless, full bleed, no text, no words, no subtitles, no captions, no typography, no title, no letters, no watermark, no logo, no frame, no border, no white borders, no picture frame"
+        clean_prompt = prompt
+        if "no text" not in clean_prompt.lower():
+            clean_prompt = f"{clean_prompt.rstrip(',. ')}, {neg_guard}"
+        elif "no frame" not in clean_prompt.lower() and "no border" not in clean_prompt.lower():
+            clean_prompt = f"{clean_prompt.rstrip(',. ')}, no frame, no border, no white borders, no picture frame"
 
         url = f"{self.BASE_URL}/images/generate"
         headers = {
@@ -65,7 +74,7 @@ class ApiframeClient:
         }
         payload = {
             "model": model,
-            "prompt": prompt,
+            "prompt": clean_prompt,
             "nanoBananaParams": {
                 "aspect_ratio": aspect_ratio,
                 "resolution": resolution,
