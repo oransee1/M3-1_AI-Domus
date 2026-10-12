@@ -229,16 +229,16 @@ class ImageProcessor:
         return output_file
 
     @staticmethod
-    def prepare_bottom_image(image_path: Path, output_file: Path, max_width: int = 270, max_height: int = 120) -> Path:
+    def prepare_bottom_image(image_path: Path, output_file: Path, max_width: int = 360, max_height: int = 160) -> Path:
         """
-        사용자가 지정한 외부 하단 이미지를 1080p FHD 영상 하단 규격(270x120px, 기존 180x80px의 1.5배 확대 규격)에 맞게
+        사용자가 지정한 외부 하단 이미지를 1080p FHD 영상 하단 규격(360x160px, 기존 180x80px의 2.0배 확대 규격)에 맞게
         원본 종횡비를 유지하며 리사이즈하고 투명 알파(RGBA) PNG로 정제합니다.
         """
         output_file.parent.mkdir(parents=True, exist_ok=True)
         img = Image.open(image_path).convert("RGBA")
         w, h = img.size
 
-        # 가로 및 세로 최대 크기 제한에 맞추어 종횡비 유지 스케일 계산 (기존 대비 1.5배 크기 270x120px)
+        # 가로 및 세로 최대 크기 제한에 맞추어 종횡비 유지 스케일 계산 (기존 대비 2.0배 크기 360x160px)
         scale = min(max_width / w, max_height / h)
         target_w = max(1, int(round(w * scale)))
         target_h = max(1, int(round(h * scale)))
