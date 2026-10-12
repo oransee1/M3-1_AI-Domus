@@ -458,6 +458,7 @@ class MainWindow(QMainWindow):
             "Glam Rock",
             "Electro",
             "Electro House (클럽스타일)",
+            "Eurodance (클럽스타일)",
             "K-Pop",
             "Ballad R&B"
         ])

@@ -120,6 +120,34 @@ class GeminiPromptAgent:
             "vocal_style": "hypnotic club vocal, energetic dance vocal, high-energy party chant, festival hype phrases, catchy club drop hook",
             "description": "high-energy festival electro house club banger with pumping four-on-the-floor kick, buzzing aggressive synth bass, massive energetic drops, and infectious club groove"
         },
+        "Eurodance (클럽스타일)": {
+            "primary_tags": "eurodance, 90s eurodance, club dance, energetic synth, four on the floor, fast euro beat, rave synths, euro club banger, uplifting dance anthem",
+            "instruments": "pumping 909 four-on-the-floor kick, bright Korg M1 synth piano chords, roaring supersaw synth leads, driving 16th-note synth bassline, fast hi-hat groove, energetic snare build-ups",
+            "tempo": "136-142 BPM (Classic Euro 140 BPM)",
+            "vocal_style": "powerful female diva vocals, energetic rhythmic rap delivery, catchy uplifting chorus hook, high-energy party chants",
+            "description": "high-energy 90s eurodance club banger with pounding four-on-the-floor kick, bright euphoric synth piano, fast buzzing saw leads, powerful diva hooks, and nostalgic dance anthem groove"
+        },
+        "Eurodance": {
+            "primary_tags": "eurodance, 90s eurodance, club dance, energetic synth, four on the floor, fast euro beat, rave synths, euro club banger, uplifting dance anthem",
+            "instruments": "pumping 909 four-on-the-floor kick, bright Korg M1 synth piano chords, roaring supersaw synth leads, driving 16th-note synth bassline, fast hi-hat groove, energetic snare build-ups",
+            "tempo": "136-142 BPM (Classic Euro 140 BPM)",
+            "vocal_style": "powerful female diva vocals, energetic rhythmic rap delivery, catchy uplifting chorus hook, high-energy party chants",
+            "description": "high-energy 90s eurodance club banger with pounding four-on-the-floor kick, bright euphoric synth piano, fast buzzing saw leads, powerful diva hooks, and nostalgic dance anthem groove"
+        },
+        "유로댄스 (클럽스타일)": {
+            "primary_tags": "eurodance, 90s eurodance, club dance, energetic synth, four on the floor, fast euro beat, rave synths, euro club banger, uplifting dance anthem",
+            "instruments": "pumping 909 four-on-the-floor kick, bright Korg M1 synth piano chords, roaring supersaw synth leads, driving 16th-note synth bassline, fast hi-hat groove, energetic snare build-ups",
+            "tempo": "136-142 BPM (Classic Euro 140 BPM)",
+            "vocal_style": "powerful female diva vocals, energetic rhythmic rap delivery, catchy uplifting chorus hook, high-energy party chants",
+            "description": "high-energy 90s eurodance club banger with pounding four-on-the-floor kick, bright euphoric synth piano, fast buzzing saw leads, powerful diva hooks, and nostalgic dance anthem groove"
+        },
+        "유로댄스": {
+            "primary_tags": "eurodance, 90s eurodance, club dance, energetic synth, four on the floor, fast euro beat, rave synths, euro club banger, uplifting dance anthem",
+            "instruments": "pumping 909 four-on-the-floor kick, bright Korg M1 synth piano chords, roaring supersaw synth leads, driving 16th-note synth bassline, fast hi-hat groove, energetic snare build-ups",
+            "tempo": "136-142 BPM (Classic Euro 140 BPM)",
+            "vocal_style": "powerful female diva vocals, energetic rhythmic rap delivery, catchy uplifting chorus hook, high-energy party chants",
+            "description": "high-energy 90s eurodance club banger with pounding four-on-the-floor kick, bright euphoric synth piano, fast buzzing saw leads, powerful diva hooks, and nostalgic dance anthem groove"
+        },
     }
 
     def get_all_free_models(self) -> list:
@@ -151,7 +179,9 @@ class GeminiPromptAgent:
         genre_info = self.GENRE_PROFILES.get(genre)
         if not genre_info:
             g_lower = genre.lower()
-            if any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
+            if any(w in g_lower for w in ["eurodance", "euro dance", "유로댄스"]):
+                genre_info = self.GENRE_PROFILES.get("Eurodance (클럽스타일)")
+            elif any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
                 genre_info = self.GENRE_PROFILES.get("Electro House (클럽스타일)")
             elif any(w in g_lower for w in ["발라", "r&b", "rnb"]):
                 genre_info = self.GENRE_PROFILES.get("Ballad R&B")
@@ -396,7 +426,9 @@ class GeminiPromptAgent:
         genre_info = cls.GENRE_PROFILES.get(genre)
         if not genre_info:
             g_lower = genre.lower()
-            if any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
+            if any(w in g_lower for w in ["eurodance", "euro dance", "유로댄스"]):
+                genre_info = cls.GENRE_PROFILES.get("Eurodance (클럽스타일)")
+            elif any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
                 genre_info = cls.GENRE_PROFILES.get("Electro House (클럽스타일)")
             elif any(w in g_lower for w in ["발라", "r&b", "rnb"]):
                 genre_info = cls.GENRE_PROFILES.get("Ballad R&B")
@@ -430,11 +462,14 @@ class GeminiPromptAgent:
     def _smart_fallback_plan(cls, mood: str, genre: str, is_instrumental: bool, custom_lyrics: str = "", image_style: str = "photo") -> dict:
         """Gemini 서버 일시 부하(503) 시에도 제작이 중단되지 않도록 하는 지능형 백업 플래너 (장르별 맞춤 악기 완벽 적용)"""
         is_rock = "rock" in genre.lower()
-        is_house = any(w in genre.lower() for w in ["house", "클럽", "쿨럽"])
-        is_electro = any(w in genre.lower() for w in ["electro", "electronic", "edm", "synthwave"]) and not is_house
+        is_eurodance = any(w in genre.lower() for w in ["eurodance", "euro dance", "유로댄스"])
+        is_house = any(w in genre.lower() for w in ["house", "클럽", "쿨럽"]) and not is_eurodance
+        is_electro = any(w in genre.lower() for w in ["electro", "electronic", "edm", "synthwave"]) and not is_house and not is_eurodance
         is_kpop = any(w in genre.lower() for w in ["k-pop", "kpop", "korean pop"])
         is_rnb = any(w in genre.lower() for w in ["r&b", "rnb", "ballad", "발라"])
-        if is_kpop:
+        if is_eurodance:
+            title = f"Eurodance - Cyber Rhythm Club Anthem"
+        elif is_kpop:
             title = f"K-Pop - Starlight Dance"
         elif is_rnb:
             title = f"Ballad R&B - Soulful Whispers"
@@ -450,7 +485,9 @@ class GeminiPromptAgent:
         genre_info = cls.GENRE_PROFILES.get(genre)
         if not genre_info:
             g_lower = genre.lower()
-            if any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
+            if any(w in g_lower for w in ["eurodance", "euro dance", "유로댄스"]):
+                genre_info = cls.GENRE_PROFILES.get("Eurodance (클럽스타일)")
+            elif any(w in g_lower for w in ["house", "클럽", "쿨럽"]):
                 genre_info = cls.GENRE_PROFILES.get("Electro House (클럽스타일)")
             elif any(w in g_lower for w in ["발라", "r&b", "rnb"]):
                 genre_info = cls.GENRE_PROFILES.get("Ballad R&B")
@@ -480,6 +517,12 @@ class GeminiPromptAgent:
                     f"Soulful contemporary R&B ballad atmosphere, instrumental, smooth slow jam groove, heartfelt melody, no vocals. {tempo_desc}."
                 )
                 suno_style = f"{primary_tags}, instrumental, slow jam, soulful ballad"
+            elif is_eurodance:
+                suno_prompt = (
+                    f"Euphoric {genre_desc}, featuring {inst_desc}. "
+                    f"Classic 90s Eurodance club dance atmosphere, instrumental, uplifting bright piano chords, fast saw leads, driving bassline, no vocals. {tempo_desc}."
+                )
+                suno_style = f"{primary_tags}, instrumental, 90s dance, euro club banger"
             elif is_house:
                 suno_prompt = (
                     f"High-energy club {genre_desc}, featuring {inst_desc}. "
@@ -538,6 +581,26 @@ class GeminiPromptAgent:
                     )
                     vocal_style = genre_info["vocal_style"]
                     suno_style = f"{primary_tags}, {vocal_style}, emotional slow jam"
+                elif is_eurodance:
+                    suno_prompt = (
+                        f"[Verse 1]\n"
+                        f"Rhythm of the night taking over the floor\n"
+                        f"Pounding 909 beat, wanting more and more\n"
+                        f"Bright piano chords and the lasers shine bright\n"
+                        f"Eurodance energy burning through the night\n\n"
+                        f"[Build Up]\n"
+                        f"Feel the power rising, reach into the sky\n"
+                        f"Euro rhythm calling, hear the crowd go wild!\n\n"
+                        f"[Chorus]\n"
+                        f"Take me to the rhythm, dance into the light!\n"
+                        f"Eurodance sensation burning through the night!\n"
+                        f"Never stop the music, let the feeling stay!\n"
+                        f"Euro club explosion, party all the way!\n\n"
+                        f"[Outro]\n"
+                        f"Eurodance forever in your heart!"
+                    )
+                    vocal_style = genre_info["vocal_style"]
+                    suno_style = f"{primary_tags}, {vocal_style}, 90s euro dance, uplifting club anthem"
                 elif is_house:
                     suno_prompt = (
                         f"[Verse 1]\n"
