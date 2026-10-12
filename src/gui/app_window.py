@@ -32,7 +32,7 @@ QWidget {
     background-color: #1e1e2e;
     color: #cdd6f4;
     font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
-    font-size: 13px;
+    font-size: 15px;
 }
 QSplitter::handle {
     background-color: #313244;
@@ -43,7 +43,7 @@ QLabel.StepBadge {
     color: #a6adc8;
     border-radius: 6px;
     padding: 6px 10px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: bold;
 }
 QLabel.StepBadgeActive {
@@ -51,7 +51,7 @@ QLabel.StepBadgeActive {
     color: #11111b;
     border-radius: 6px;
     padding: 6px 10px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: bold;
 }
 QLabel.StepBadgeDone {
@@ -59,7 +59,7 @@ QLabel.StepBadgeDone {
     color: #11111b;
     border-radius: 6px;
     padding: 6px 10px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: bold;
 }
 QGroupBox {
@@ -99,7 +99,7 @@ QPushButton:hover {
 QPushButton#GenerateBtn {
     background-color: #89b4fa;
     color: #11111b;
-    font-size: 15px;
+    font-size: 17px;
     padding: 12px;
 }
 QPushButton#GenerateBtn:hover {
@@ -108,7 +108,7 @@ QPushButton#GenerateBtn:hover {
 QPushButton#ThumbnailBtn {
     background-color: #f38ba8;
     color: #11111b;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     padding: 11px;
     border-radius: 6px;
@@ -119,7 +119,7 @@ QPushButton#ThumbnailBtn:hover {
 QPushButton#PresetBtn {
     background-color: #313244;
     border: 1px solid #45475a;
-    font-size: 11px;
+    font-size: 13px;
     padding: 5px 8px;
 }
 QPushButton#PresetBtn:hover {
@@ -149,7 +149,7 @@ QCheckBox::indicator {
 QRadioButton {
     spacing: 8px;
     color: #cdd6f4;
-    font-size: 13px;
+    font-size: 15px;
 }
 QRadioButton::indicator {
     width: 16px;
@@ -169,7 +169,7 @@ QLabel#SceneCell {
     background-color: #181825;
     border: 1px dashed #45475a;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 13px;
     color: #6c7086;
 }
 QTabWidget::pane {
@@ -260,13 +260,13 @@ class RenderingProgressDialog(QDialog):
         warn_layout = QVBoxLayout(warn_box)
         warn_layout.setSpacing(6)
         warn_title = QLabel("⚠️ [필독 안내] 고화질 영상 렌더링 및 생성 파이프라인 가동 중!")
-        warn_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #fab387;")
+        warn_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #fab387;")
         warn_desc = QLabel(
             "AI 멀티모달 생성과 1080p 영상 합성(FFmpeg)은 시스템 사양 및 음원 길이에 따라\n"
             "수 분에서 최대 17~20분가량 소요될 수 있습니다. 정상적으로 백그라운드 처리 중이오니\n"
             "프로그램을 강제 종료하거나 창을 닫지 마시고 잠시만 기다려주세요."
         )
-        warn_desc.setStyleSheet("font-size: 12px; color: #cdd6f4; line-height: 140%;")
+        warn_desc.setStyleSheet("font-size: 14px; color: #cdd6f4; line-height: 140%;")
         warn_layout.addWidget(warn_title)
         warn_layout.addWidget(warn_desc)
         layout.addWidget(warn_box)
@@ -274,10 +274,10 @@ class RenderingProgressDialog(QDialog):
         # 2. 진행 시간 및 단계 정보
         info_layout = QHBoxLayout()
         self.time_label = QLabel("⏱️ 진행 시간: 00:00:00")
-        self.time_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #89b4fa;")
+        self.time_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #89b4fa;")
 
         self.step_label = QLabel("📌 진행 단계: [1/5] AI 기획 에이전트")
-        self.step_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #a6e3a1;")
+        self.step_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #a6e3a1;")
 
         info_layout.addWidget(self.time_label)
         info_layout.addStretch()
@@ -287,9 +287,9 @@ class RenderingProgressDialog(QDialog):
         # 3. 프로그레스바 및 진행율 (%)
         prog_header = QHBoxLayout()
         prog_title = QLabel("전체 파이프라인 실시간 진행률:")
-        prog_title.setStyleSheet("font-size: 12px; font-weight: bold; color: #bac2de;")
+        prog_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #bac2de;")
         self.percent_label = QLabel("0%")
-        self.percent_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #a6e3a1;")
+        self.percent_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #a6e3a1;")
         prog_header.addWidget(prog_title)
         prog_header.addStretch()
         prog_header.addWidget(self.percent_label)
@@ -302,7 +302,7 @@ class RenderingProgressDialog(QDialog):
 
         # 4. 세부 상태 메시지
         self.detail_label = QLabel("작업 준비 중...")
-        self.detail_label.setStyleSheet("font-size: 12px; color: #a6adc8; font-style: italic;")
+        self.detail_label.setStyleSheet("font-size: 14px; color: #a6adc8; font-style: italic;")
         layout.addWidget(self.detail_label)
 
         layout.addStretch()
@@ -379,7 +379,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("AI Domus Music Studio - AI 기반 음악 및 영상 제작 자동화")
         self.setWindowIcon(get_app_icon())
-        self.resize(1200, 820)
+        self.resize(1240, 840)
         self.setStyleSheet(MODERN_STYLE)
 
         self.worker = None
@@ -400,9 +400,9 @@ class MainWindow(QMainWindow):
         header = QHBoxLayout()
         title_box = QVBoxLayout()
         main_title = QLabel("🎵 AI Domus Music Studio")
-        main_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #cdd6f4;")
+        main_title.setStyleSheet("font-size: 22px; font-weight: bold; color: #cdd6f4;")
         sub_title = QLabel("Gemini 프롬프트 기획 ➜ Suno & Nano Banana 멀티모달 생성 ➜ 3x3 9분할 ➜ 1080p MP4 원클릭 자동 렌더링")
-        sub_title.setStyleSheet("font-size: 12px; color: #a6adc8;")
+        sub_title.setStyleSheet("font-size: 14px; color: #a6adc8;")
         title_box.addWidget(main_title)
         title_box.addWidget(sub_title)
         header.addLayout(title_box)
@@ -428,7 +428,7 @@ class MainWindow(QMainWindow):
 
         # 빠른 프리셋
         preset_label = QLabel("⚡ 빠른 무드 프리셋:")
-        preset_label.setStyleSheet("font-size: 11px; color: #bac2de;")
+        preset_label.setStyleSheet("font-size: 13px; color: #bac2de;")
         left_layout.addWidget(preset_label)
         preset_layout = QHBoxLayout()
         presets = [
@@ -494,7 +494,7 @@ class MainWindow(QMainWindow):
         lyrics_box_layout = QVBoxLayout(self.lyrics_box)
         lyrics_box_layout.setContentsMargins(0, 4, 0, 4)
         lyrics_guide = QLabel("✍️ 보컬 가사 (선택 사항 - 미입력 시 AI가 무드에 맞춰 자동 작사):")
-        lyrics_guide.setStyleSheet("font-size: 11px; color: #a6adc8;")
+        lyrics_guide.setStyleSheet("font-size: 13px; color: #a6adc8;")
         self.lyrics_input = QTextEdit()
         self.lyrics_input.setPlaceholderText("예시:\n[Verse 1]\n창가에 스며든 따스한 바람\n[Chorus]\n기억해요 그대의 아름다운 날들...")
         self.lyrics_input.setFixedHeight(75)
@@ -506,7 +506,7 @@ class MainWindow(QMainWindow):
         # 이미지 유형 선택 (라디오 버튼: 실제 사진 vs 그림)
         style_row = QHBoxLayout()
         style_label = QLabel("이미지 유형:")
-        style_label.setFixedWidth(72)
+        style_label.setFixedWidth(84)
         style_row.addWidget(style_label)
 
         self.radio_photo = QRadioButton("📷 실제 사진 (Real Photo)")
@@ -525,7 +525,7 @@ class MainWindow(QMainWindow):
         # 로고 이미지 선택 (영상 좌측 상단 오버레이)
         logo_row = QHBoxLayout()
         logo_label = QLabel("로고 이미지:")
-        logo_label.setFixedWidth(72)
+        logo_label.setFixedWidth(84)
         logo_row.addWidget(logo_label)
 
         self.logo_path_input = QLineEdit()
@@ -548,7 +548,7 @@ class MainWindow(QMainWindow):
         # 영상 제목 입력 (영상 우측 상단 오버레이)
         title_row = QHBoxLayout()
         title_label = QLabel("영상 제목:")
-        title_label.setFixedWidth(72)
+        title_label.setFixedWidth(84)
         title_row.addWidget(title_label)
 
         self.title_input = QLineEdit()
@@ -566,7 +566,7 @@ class MainWindow(QMainWindow):
         # 하단 이미지 선택 (영상 하단 오버레이: 우측 하단 / 좌측 하단)
         bottom_img_row = QHBoxLayout()
         bottom_img_label = QLabel("하단 이미지:")
-        bottom_img_label.setFixedWidth(72)
+        bottom_img_label.setFixedWidth(84)
         bottom_img_row.addWidget(bottom_img_label)
 
         self.bottom_img_path_input = QLineEdit()
@@ -589,7 +589,7 @@ class MainWindow(QMainWindow):
         # 하단 이미지 위치 선택 (라디오 버튼: 우측 하단 vs 좌측 하단)
         bpos_row = QHBoxLayout()
         bpos_label = QLabel("하단 위치:")
-        bpos_label.setFixedWidth(72)
+        bpos_label.setFixedWidth(84)
         bpos_row.addWidget(bpos_label)
 
         self.radio_bpos_left = QRadioButton("좌측 하단")
@@ -641,13 +641,13 @@ class MainWindow(QMainWindow):
             step_bar.addWidget(badge)
             if i < len(self.STEP_NAMES) - 1:
                 arrow = QLabel("➔")
-                arrow.setStyleSheet("color: #6c7086; font-size: 13px; font-weight: bold;")
+                arrow.setStyleSheet("color: #6c7086; font-size: 15px; font-weight: bold;")
                 arrow.setAlignment(Qt.AlignCenter)
                 step_bar.addWidget(arrow)
         right_layout.addLayout(step_bar)
 
         self.status_label = QLabel("대기 중... [생성 시작]을 클릭하세요.")
-        self.status_label.setStyleSheet("font-weight: bold; color: #a6e3a1; font-size: 13px;")
+        self.status_label.setStyleSheet("font-weight: bold; color: #a6e3a1; font-size: 15px;")
         right_layout.addWidget(self.status_label)
 
         self.progress_bar = QProgressBar()
@@ -662,14 +662,14 @@ class MainWindow(QMainWindow):
         log_layout = QVBoxLayout(log_panel)
         log_layout.setContentsMargins(0, 4, 0, 4)
         log_title = QLabel("📋 실시간 처리 로그 콘솔 (처음부터 끝까지 전체 진행 상황 실시간 스트리밍):")
-        log_title.setStyleSheet("font-weight: bold; color: #89b4fa; font-size: 12px;")
+        log_title.setStyleSheet("font-weight: bold; color: #89b4fa; font-size: 14px;")
         log_layout.addWidget(log_title)
 
         self.log_console = QTextEdit()
         self.log_console.setReadOnly(True)
         self.log_console.setStyleSheet(
             "background-color: #11111b; color: #cdd6f4; "
-            "font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; "
+            "font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; "
             "border: 1px solid #45475a; border-radius: 6px; padding: 6px;"
         )
         log_layout.addWidget(self.log_console)
@@ -680,7 +680,7 @@ class MainWindow(QMainWindow):
         scenes_layout = QVBoxLayout(scenes_panel)
         scenes_layout.setContentsMargins(0, 4, 0, 4)
         scenes_title = QLabel("🖼️ 3x3 스토리보드 정밀 분할 씬 (StoryBoard-Division):")
-        scenes_title.setStyleSheet("font-weight: bold; color: #f9e2af; font-size: 12px;")
+        scenes_title.setStyleSheet("font-weight: bold; color: #f9e2af; font-size: 14px;")
         scenes_layout.addWidget(scenes_title)
 
         scenes_grid = QGridLayout()
