@@ -1,0 +1,39 @@
+20: from PIL import Image
+35: QPainter, QPen, QBrush, QColor, QFont, QFontDatabase, QImage, QPixmap,
+250: # Image attributes
+251: self.image_path = ""
+253: self.image_base64 = ""
+301: "image_path": self.image_path,
+302: "image_base64": self.image_base64
+309: if self.image_base64 and not self.pixmap:
+311: raw = base64.b64decode(self.image_base64.split(",")[-1])
+312: qimg = QImage()
+314: self.pixmap = QPixmap.fromImage(qimg)
+584: elif l.type == "image":
+585: self.draw_image_layer(painter, l, local_rect)
+730: def draw_image_layer(self, painter, l, r):
+739: painter.drawText(r, Qt.AlignmentFlag.AlignCenter, "🖼️ 이미지 없음")
+954: def export_qimage(self, scale=1.0):
+957: img = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
+1075: qimg = QImage(frame_rgb.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+1076: pix = QPixmap.fromImage(qimg).scaled(
+1094: qimg = QImage(frame_rgb.data, w, h, ch * w, QImage.Format.Format_RGB888).copy()
+1095: pix = QPixmap.fromImage(qimg)
+1118: left_box.addWidget(QLabel("<b>완성 썸네일 이미지</b>"))
+1124: qimg = self.canvas.export_qimage(0.3)
+1125: self.thumb_preview.setPixmap(QPixmap.fromImage(qimg).scaled(280, 158, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+1195: f"🎉 유튜브 업로드 큐 등록 완료!\n\n제목: {title}\n공개 상태: {self.privacy_combo.currentText()}\n썸네일 이미지가 성공적으로 연결되었습니다."
+1458: ("🖼️ 이미지", "image")
+1697: self.export_format_combo.addItems(["PNG Image (*.png)", "JPEG Image (*.jpg)"])
+1838: icon_str = "🔤" if l.type == "text" else ("🖼️" if l.type == "image" else "🔷")
+1928: elif tool_id == "image":
+1929: self.add_image_layer_action()
+1953: def add_image_layer_action(self):
+1955: self, "이미지 파일 선택", "", "Images (*.png *.jpg *.jpeg *.gif *.bmp *.webp *.svg);;All Files (*)"
+1961: l = Layer("image", f"이미지: {os.path.basename(filepath)}")
+1962: l.image_path = filepath
+2171: l = Layer("image", f"영상 프레임 ({name})")
+2198: "JPEG Image (*.jpg);;PNG Image (*.png);;All Files (*)" if is_jpeg else "PNG Image (*.png);;JPEG Image (*.jpg);;All Files (*)"
+2204: qimg = self.canvas.export_qimage(scale)
+2213: pil_img = Image.open(io.BytesIO(buf.data()))
+2232: f"🎉 썸네일 이미지가 성공적으로 저장되었습니다!\n\n"

@@ -13,6 +13,9 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # Application Icon
 ICON_PATH = BASE_DIR / "icon.png"
 
+# Thumbnail Designer Directory
+THUMBNAIL_DESIGNER_DIR = BASE_DIR / "Thumbnail_Designer-Program"
+
 # Load environment variables
 ENV_FILE = BASE_DIR / ".env"
 load_dotenv(ENV_FILE)

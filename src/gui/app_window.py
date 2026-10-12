@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import subprocess
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -12,7 +13,7 @@ from PyQt5.QtCore import Qt, QUrl, QTimer
 from PyQt5.QtGui import QFont, QDesktopServices, QPixmap, QIcon
 from PIL import Image
 
-from src.config import Config, OUTPUT_DIR, ICON_PATH
+from src.config import Config, OUTPUT_DIR, ICON_PATH, THUMBNAIL_DESIGNER_DIR
 from src.media.image_processor import ImageProcessor
 from src.gui.worker import AutomationWorker
 
@@ -103,6 +104,17 @@ QPushButton#GenerateBtn {
 }
 QPushButton#GenerateBtn:hover {
     background-color: #b4befe;
+}
+QPushButton#ThumbnailBtn {
+    background-color: #f38ba8;
+    color: #11111b;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 11px;
+    border-radius: 6px;
+}
+QPushButton#ThumbnailBtn:hover {
+    background-color: #eba0ac;
 }
 QPushButton#PresetBtn {
     background-color: #313244;
@@ -375,6 +387,7 @@ class MainWindow(QMainWindow):
         self.scene_labels = []
         self.step_badges = []
         self.progress_dialog = None
+        self.thumbnail_process = None
 
         self.init_ui()
 
@@ -601,6 +614,14 @@ class MainWindow(QMainWindow):
         self.gen_btn.setObjectName("GenerateBtn")
         self.gen_btn.clicked.connect(self.start_generation)
         left_layout.addWidget(self.gen_btn)
+
+        left_layout.addSpacing(10)
+
+        # 유튜브 썸네일 제작 및 업로드 버튼
+        self.thumbnail_btn = QPushButton("🎨 유튜브 썸네일 제작 및 업로드")
+        self.thumbnail_btn.setObjectName("ThumbnailBtn")
+        self.thumbnail_btn.clicked.connect(self.open_thumbnail_designer)
+        left_layout.addWidget(self.thumbnail_btn)
         left_layout.addStretch()
         body_layout.addWidget(left_box, 40)
 
@@ -739,6 +760,50 @@ class MainWindow(QMainWindow):
             self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 우측 하단 표시 이미지 - 1.5배 확대)")
         else:
             self.bottom_img_path_input.setPlaceholderText("선택 안 함 (영상 좌측 하단 표시 이미지 - 1.5배 확대)")
+
+    def open_thumbnail_designer(self):
+        """'유튜브 썸네일 제작 및 업로드' 독립 창(Thumbnail_Designer-Program) 실행"""
+        designer_dir = THUMBNAIL_DESIGNER_DIR
+        # 로컬 프로젝트 폴더 우선 확인 후, 없으면 외부 원본 폴더 대비 폴백
+        if not designer_dir.exists():
+            alt_dir = Path(r"C:\Users\DiCiA\PycharmProjects\썸네일 디자이너 프로그램 개발\Thumbnail_Designer-Program")
+            if alt_dir.exists():
+                designer_dir = alt_dir
+
+        launcher_script = designer_dir / "launcher.py"
+        if not launcher_script.exists():
+            launcher_script = designer_dir / "native_app.py"
+
+        if not launcher_script.exists():
+            QMessageBox.warning(
+                self,
+                "프로그램 파일 없음",
+                f"썸네일 디자이너 실행 파일을 찾을 수 없습니다:\n{launcher_script}"
+            )
+            return
+
+        try:
+            # 이미 실행 중인 프로세스가 살아있는 경우 알림 및 중복 실행 방지
+            if self.thumbnail_process and self.thumbnail_process.poll() is None:
+                self.append_log("ℹ️ 유튜브 썸네일 제작 및 업로드 창이 이미 실행 중입니다.")
+                QMessageBox.information(
+                    self,
+                    "실행 중 안내",
+                    "유튜브 썸네일 제작 및 업로드 프로그램이 이미 실행 중입니다.\n작업 표시줄에서 실행 중인 창을 확인해주세요."
+                )
+                return
+
+            self.thumbnail_process = subprocess.Popen(
+                [sys.executable, str(launcher_script)],
+                cwd=str(designer_dir)
+            )
+            self.append_log(f"🎨 [유튜브 썸네일] 디자이너 새 창이 성공적으로 실행되었습니다 (PID: {self.thumbnail_process.pid})")
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "실행 오류",
+                f"썸네일 디자이너 실행 중 오류가 발생했습니다:\n{e}"
+            )
 
     def start_generation(self):
         mood = self.mood_input.toPlainText().strip()

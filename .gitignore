@@ -29,3 +29,10 @@ dist/
 # IDE files
 .idea/
 .vscode/
+
+# Thumbnail Designer secrets & dynamic outputs
+Thumbnail_Designer-Program/client_secret.json
+Thumbnail_Designer-Program/gemini_api_key.txt
+Thumbnail_Designer-Program/dist/
+Thumbnail_Designer-Program/exports/
+Thumbnail_Designer-Program/uploads/
