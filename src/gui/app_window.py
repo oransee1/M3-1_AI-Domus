@@ -592,18 +592,18 @@ class MainWindow(QMainWindow):
         bpos_label.setFixedWidth(72)
         bpos_row.addWidget(bpos_label)
 
-        self.radio_bpos_right = QRadioButton("우측 하단 (기본)")
         self.radio_bpos_left = QRadioButton("좌측 하단")
+        self.radio_bpos_right = QRadioButton("우측 하단 (기본)")
         self.radio_bpos_right.setChecked(True)
 
         self.bpos_group = QButtonGroup(self)
-        self.bpos_group.addButton(self.radio_bpos_right)
         self.bpos_group.addButton(self.radio_bpos_left)
+        self.bpos_group.addButton(self.radio_bpos_right)
 
         self.radio_bpos_right.toggled.connect(self._on_bpos_toggled)
 
-        bpos_row.addWidget(self.radio_bpos_right)
         bpos_row.addWidget(self.radio_bpos_left)
+        bpos_row.addWidget(self.radio_bpos_right)
         bpos_row.addStretch()
         left_layout.addLayout(bpos_row)
 
