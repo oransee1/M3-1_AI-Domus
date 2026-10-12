@@ -1639,9 +1639,15 @@ class YouTubeUploadDialog(QDialog):
             thm_file = self.thumb_combo.currentText()
             thumb_path = None
             if thm_file == "현재 작업중인 캔버스 (기본)":
-                qimg = self.canvas.export_qimage(1.0)
+                # 고해상도 FHD 1080p (1.5x, 1920x1080)로 선명하게 렌더링하고 유튜브 2MB 한도 내로 최적화
+                qimg = self.canvas.export_qimage(1.5)
                 thumb_path = os.path.join(EXPORTS_DIR, "temp_upload_thumb.jpg")
-                qimg.save(thumb_path, "JPG", 95)
+                quality = 95
+                qimg.save(thumb_path, "JPG", quality)
+                # 유튜브 썸네일 최대 파일 크기는 2MB 제한
+                while os.path.exists(thumb_path) and os.path.getsize(thumb_path) > 1.95 * 1024 * 1024 and quality > 70:
+                    quality -= 5
+                    qimg.save(thumb_path, "JPG", quality)
             elif thm_file != "선택 안 함 (영상 없음)":
                 thumb_path = os.path.join(EXPORTS_DIR, thm_file)
 
@@ -1655,10 +1661,16 @@ class YouTubeUploadDialog(QDialog):
             self.progress_bar.setValue(100)
             self.status_label.setText("업로드 완료!")
             
-            msg = f"🎉 유튜브 채널 업로드 완료!\n\n선택된 채널: {channel_name}\n제목: {title}\n공개 상태: {self.privacy_combo.currentText()}"
+            msg = f"🎉 유튜브 채널 업로드 완료!\n\n"
+            msg += f"• 선택된 채널: {channel_name}\n"
+            msg += f"• 동영상 제목: {title}\n"
+            msg += f"• 공개 상태: {self.privacy_combo.currentText()}\n"
             if playlist_name:
-                msg += f"\n재생목록: {playlist_name}"
-            msg += "\n\n성공적으로 전송되었습니다."
+                msg += f"• 재생목록: {playlist_name}\n"
+            msg += "\n💡 [유튜브 고화질(HD) 처리 필독 안내]:\n"
+            msg += "• 유튜브는 업로드 직후 저화질(SD 360p) 버전을 먼저 스트리밍 제공합니다.\n"
+            msg += "• 고화질(HD 1080p) 인코딩은 유튜브 서버에서 약 5~15분 동안 백그라운드로 처리됩니다.\n"
+            msg += "• 업로드 직후 재생 시 일시적으로 흐려 보일 수 있으니, 유튜브 영상 우측 하단 ⚙️ 설정 아이콘에 [HD] 마크가 활성화될 때까지 잠시 기다려주세요!"
 
             # TTS 음성 재생 (QMessageBox가 떠 있는 동안 자연스럽게 배경에서 재생됩니다)
             if self.tts:

@@ -161,18 +161,30 @@ class VideoRenderer:
 
         filter_complex = ";".join(filter_parts)
 
+        # 유튜브 마스터 규격 고화질 인코딩:
+        # - GOP 2초 고정(-g 60, -keyint_min 60) 및 sc_threshold 0: 유튜브 공식 권장 Closed GOP 규격
+        # - 고화질 비트레이트 보장(-b:v 12M, -maxrate 16M, -bufsize 24M): 정적/페이드 씬에서 안개/잔디 디테일 뭉개짐 원천 차단
+        # - faststart 플래그: moov atom을 파일 선두에 배치하여 유튜브의 HD(1080p) 트랜스코딩 즉시 개시 보장
         cmd.extend([
             "-filter_complex", filter_complex,
             "-map", "[vout]",
             "-map", "[aout]",
             "-c:v", "libx264",
             "-preset", "medium",
-            "-crf", "17",
+            "-crf", "16",
             "-profile:v", "high",
             "-pix_fmt", "yuv420p",
             "-r", "30",
+            "-g", "60",
+            "-keyint_min", "60",
+            "-sc_threshold", "0",
+            "-b:v", "12M",
+            "-maxrate", "16M",
+            "-bufsize", "24M",
+            "-movflags", "+faststart",
             "-c:a", "aac",
-            "-b:a", "192k",
+            "-b:a", "320k",
+            "-ar", "48000",
             "-t", f"{total_duration:.3f}",
             str(output_mp4)
         ])
@@ -308,12 +320,20 @@ class VideoRenderer:
         cmd.extend([
             "-c:v", "libx264",
             "-preset", "medium",
-            "-crf", "17",
+            "-crf", "16",
             "-profile:v", "high",
             "-pix_fmt", "yuv420p",
             "-r", "30",
+            "-g", "60",
+            "-keyint_min", "60",
+            "-sc_threshold", "0",
+            "-b:v", "12M",
+            "-maxrate", "16M",
+            "-bufsize", "24M",
+            "-movflags", "+faststart",
             "-c:a", "aac",
-            "-b:a", "192k",
+            "-b:a", "320k",
+            "-ar", "48000",
             "-shortest",
             str(output_mp4)
         ])
